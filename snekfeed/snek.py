@@ -36,8 +36,10 @@ class Snek:
         self.radius = body_radius(level)
         start = Vector2(self.area.centerx, self.area.centery + 40)
         self.heading = -0.3
-        self.segments = [start - Vector2(math.cos(self.heading), math.sin(self.heading)) * i * self.spacing()
-                         for i in range(target_length(level))]
+        self.segments = [
+            start - Vector2(math.cos(self.heading), math.sin(self.heading)) * i * self.spacing()
+            for i in range(target_length(level))
+        ]
         self.trail: deque[Vector2] = deque(Vector2(p) for p in self.segments)
         self.target = Vector2(start)
         self.state = "idle"  # idle | wander | seek | eat | sleep
@@ -83,8 +85,9 @@ class Snek:
 
     # ---- update -----------------------------------------------------------------------
 
-    def update(self, dt: float, foods: dict[int, Food], feeding: Feeding,
-               tummy_full: bool, mouse, butterfly_pos) -> None:
+    def update(
+        self, dt: float, foods: dict[int, Food], feeding: Feeding, tummy_full: bool, mouse, butterfly_pos
+    ) -> None:
         """Advance movement and request claims; observe feeding's meal clock."""
         self.t += dt
         self.happy_t = max(0.0, self.happy_t - dt)
@@ -112,8 +115,11 @@ class Snek:
             self._follow()
             return
 
-        live_foods = [(snack_id, foods[snack_id]) for snack_id, snack in snacks.items()
-                      if snack.phase == "waiting" and snack_id in foods]
+        live_foods = [
+            (snack_id, foods[snack_id])
+            for snack_id, snack in snacks.items()
+            if snack.phase == "waiting" and snack_id in foods
+        ]
         if live_foods and self.state != "eat":
             if self.state == "sleep" and tummy_full:
                 pass  # food coma: the snack waits until Snek wakes up
@@ -250,7 +256,7 @@ class Snek:
         radii = []
         for i in range(n):
             u = i / max(1, n - 1)
-            r = R * (1.0 - 0.68 * u ** 2.2)
+            r = R * (1.0 - 0.68 * u**2.2)
             for b in self.bulges:
                 r *= 1.0 + 0.38 * math.exp(-((i - b) ** 2) / 3.0)
             radii.append(r)

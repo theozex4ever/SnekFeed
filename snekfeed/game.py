@@ -95,8 +95,7 @@ class Game:
     def _save_progress(self, exiting: bool = False) -> bool:
         if not self.saving_allowed:
             if exiting:
-                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.",
-                      file=sys.stderr)
+                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.", file=sys.stderr)
             return False
         if S.save(self.st, self.save_path):
             return True

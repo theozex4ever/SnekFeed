@@ -17,8 +17,7 @@ SHED_BUTTON = (C.PANEL[0] + C.PANEL[2] // 2, C.PANEL[1] + 118 + 203)
 
 def skin_position(key):
     i = next(i for i, skin in enumerate(C.SKINS) if skin.key == key)
-    return (C.PANEL[0] + 60 + (i % 4) * 82,
-            C.PANEL[1] + 118 + 338 + (i // 4) * 80)
+    return (C.PANEL[0] + 60 + (i % 4) * 82, C.PANEL[1] + 118 + 338 + (i // 4) * 80)
 
 
 @pytest.fixture
@@ -72,11 +71,14 @@ def test_any_tab_click_cancels_confirmation(shop, tab):
     assert ui.click(SHED_BUTTON, st) == ("noop",)
 
 
-@pytest.mark.parametrize(("target", "expected"), [
-    (skin_position("mint"), ("skin", "mint")),
-    ((0, 0), None),
-    (skin_position("peach"), None),
-])
+@pytest.mark.parametrize(
+    ("target", "expected"),
+    [
+        (skin_position("mint"), ("skin", "mint")),
+        ((0, 0), None),
+        (skin_position("peach"), None),
+    ],
+)
 def test_other_clicks_do_not_cancel_confirmation(shop, target, expected):
     ui, st = shop
     assert ui.click(SHED_BUTTON, st) == ("noop",)

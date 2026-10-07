@@ -74,10 +74,8 @@ class UI:
         self.rows_top = self.panel.y + 118
         self._shed_confirm = 0.0
         self._shed_card = pygame.Rect(self.panel.x + 14, self.rows_top, self.panel.w - 28, 250)
-        self._shed_button = pygame.Rect(self._shed_card.x + 16, self.rows_top + 180,
-                                       self._shed_card.w - 32, 46)
-        self._skins_card = pygame.Rect(self.panel.x + 14, self._shed_card.bottom + 12,
-                                      self.panel.w - 28, 200)
+        self._shed_button = pygame.Rect(self._shed_card.x + 16, self.rows_top + 180, self._shed_card.w - 32, 46)
+        self._skins_card = pygame.Rect(self.panel.x + 14, self._shed_card.bottom + 12, self.panel.w - 28, 200)
         # Keep every slot; eligibility comes from current state, never a draw.
         self._skin_rects: dict[str, pygame.Rect] = {}
         for i, skin in enumerate(C.SKINS):
@@ -176,8 +174,18 @@ class UI:
         # Mute button
         D.circle(surf, C.CREAM, self.mute_rect.center, 14)
         mx, my = self.mute_rect.center
-        D.polygon(surf, C.INK_SOFT, [(mx - 7, my - 3), (mx - 3, my - 3), (mx + 2, my - 8), (mx + 2, my + 8),
-                                     (mx - 3, my + 3), (mx - 7, my + 3)])
+        D.polygon(
+            surf,
+            C.INK_SOFT,
+            [
+                (mx - 7, my - 3),
+                (mx - 3, my - 3),
+                (mx + 2, my - 8),
+                (mx + 2, my + 8),
+                (mx - 3, my + 3),
+                (mx - 7, my + 3),
+            ],
+        )
         if muted:
             D.line(surf, C.PINK_DEEP, (mx + 5, my - 4), (mx + 11, my + 4), 2)
             D.line(surf, C.PINK_DEEP, (mx + 11, my - 4), (mx + 5, my + 4), 2)
@@ -191,8 +199,14 @@ class UI:
         D.panel(surf, p, (252, 248, 255), 26, 5)
         D.text(surf, "Snek Feed", (p.x + 22, p.y + 14), 28, C.INK, True)
         D.heart(surf, C.PINK, (p.x + 182, p.y + 32), 16)
-        D.text(surf, f"{st.snacks_eaten} snacks  {st.pets} pets", (p.right - 20, p.y + 26), 13, C.INK_SOFT,
-               anchor="topright")
+        D.text(
+            surf,
+            f"{st.snacks_eaten} snacks  {st.pets} pets",
+            (p.right - 20, p.y + 26),
+            13,
+            C.INK_SOFT,
+            anchor="topright",
+        )
         for key, label in TABS:
             rect = self.tab_rects[key]
             active = key == self.tab
@@ -232,8 +246,7 @@ class UI:
 
         lift = -2 if hover else 0
         r = rect.move(0, lift)
-        D.panel(surf, r, C.WHITE if unlocked else (246, 242, 248), 18, 3 if unlocked else 0,
-                C.LILAC if hover else None)
+        D.panel(surf, r, C.WHITE if unlocked else (246, 242, 248), 18, 3 if unlocked else 0, C.LILAC if hover else None)
         icon = pygame.Rect(r.x + 10, r.y + 10, 64, 64)
         pygame.draw.rect(surf, ICON_BG[self.tab] if unlocked else (236, 232, 240), icon, border_radius=16)
         if unlocked:
@@ -262,8 +275,9 @@ class UI:
             art.snack(surf, key, center, 44)
         elif self.tab == "home":
             s = {"pond": 50, "house": 56, "rock": 50}.get(key, 46)
-            art.decor(surf, key, (center[0], center[1] + s * 0.35 + (8 if key in ("mush", "house") else 0)),
-                      s, self.t, 0)
+            art.decor(
+                surf, key, (center[0], center[1] + s * 0.35 + (8 if key in ("mush", "house") else 0)), s, self.t, 0
+            )
         else:
             x, y = center
             if key == "brush":
@@ -289,8 +303,10 @@ class UI:
         card = self._shed_card
         D.panel(surf, card, C.WHITE, 18, 3)
         D.text(surf, "Shed Skin", (x + 8, y + 12), 22, C.INK, True)
-        msg = ("Once Snek reaches Lv 15, Snek can shed their skin. Snek becomes tiny again and the home resets, "
-               "but Snek keeps Shimmer Scales: +5% hearts each, forever. Every shed reveals a new skin color.")
+        msg = (
+            "Once Snek reaches Lv 15, Snek can shed their skin. Snek becomes tiny again and the home resets, "
+            "but Snek keeps Shimmer Scales: +5% hearts each, forever. Every shed reveals a new skin color."
+        )
         for j, ln in enumerate(D.wrap(msg, 13, card.w - 36)):
             D.text(surf, ln, (x + 8, y + 44 + j * 18), 13, C.INK_SOFT)
         sy = y + 150
@@ -336,11 +352,11 @@ class UI:
         D.text(surf, "Welcome back!", (card.centerx, card.y + 40), 30, C.INK, True, "center")
         h, m = int(away // 3600), int(away % 3600 // 60)
         span = f"{h}h {m}m" if h else f"{m}m"
-        D.text(surf, f"Snek kept the home cozy for {span}.", (card.centerx, card.y + 86), 16, C.INK_SOFT,
-               anchor="center")
+        D.text(
+            surf, f"Snek kept the home cozy for {span}.", (card.centerx, card.y + 86), 16, C.INK_SOFT, anchor="center"
+        )
         heart_amount(surf, earned, (card.centerx, card.y + 130), 28, C.INK, True, "center")
-        D.text(surf, "click anywhere to continue", (card.centerx, card.bottom - 30), 13, C.INK_SOFT,
-               anchor="center")
+        D.text(surf, "click anywhere to continue", (card.centerx, card.bottom - 30), 13, C.INK_SOFT, anchor="center")
 
     def draw_hint(self, surf, st: GameState, area: pygame.Rect) -> None:
         if st.pets < 5:

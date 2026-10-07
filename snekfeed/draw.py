@@ -57,8 +57,10 @@ def line(surf, color, a, b, width=1) -> None:
 def arc(surf, color, center, r, start, end, width=2, steps=10) -> None:
     """Thick arc drawn as a polyline (angles in radians, y down)."""
     pts = [
-        (center[0] + math.cos(start + (end - start) * i / steps) * r,
-         center[1] + math.sin(start + (end - start) * i / steps) * r)
+        (
+            center[0] + math.cos(start + (end - start) * i / steps) * r,
+            center[1] + math.sin(start + (end - start) * i / steps) * r,
+        )
         for i in range(steps + 1)
     ]
     for a, b in pairwise(pts):

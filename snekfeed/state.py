@@ -150,11 +150,7 @@ class GameState:
 
     def can_buy_snack(self, key: str, pending_fill: float = 0.0) -> bool:
         snack = SNACKS_BY_KEY[key]
-        return (
-            self.snack_unlocked(key)
-            and self.hearts >= snack.cost
-            and self.has_room(pending_fill)
-        )
+        return self.snack_unlocked(key) and self.hearts >= snack.cost and self.has_room(pending_fill)
 
     def buy_snack(self, key: str, pending_fill: float = 0.0) -> bool:
         if not self.can_buy_snack(key, pending_fill):
@@ -365,9 +361,7 @@ class GameState:
             derived = [needed, state.pet_value(), state.passive_rate(), credit]
             derived += [state.decor_cost(key) for key in state.decor]
             derived += [state.care_cost(key) for key in state.care]
-            derived += [amount + credit for amount in (
-                state.hearts, state.run_hearts, state.lifetime_hearts
-            )]
+            derived += [amount + credit for amount in (state.hearts, state.run_hearts, state.lifetime_hearts)]
             if not all(math.isfinite(value) for value in derived):
                 raise ValueError("save calculations must remain finite")
         except OverflowError as error:
@@ -427,9 +421,7 @@ def load(path: str) -> GameState | None:
         return None
 
 
-RecoveryProblem = Literal[
-    "invalid_save", "unsupported_version", "read_failed", "preserve_failed", "checkpoint_failed"
-]
+RecoveryProblem = Literal["invalid_save", "unsupported_version", "read_failed", "preserve_failed", "checkpoint_failed"]
 
 
 @dataclass(frozen=True)
@@ -444,7 +436,8 @@ class Recovery:
 
 def _preserve_rejected_save(path: str) -> str:
     descriptor, backup = tempfile.mkstemp(
-        prefix=os.path.basename(path) + ".rejected-", suffix=".bak",
+        prefix=os.path.basename(path) + ".rejected-",
+        suffix=".bak",
         dir=os.path.dirname(path) or ".",
     )
     try:
