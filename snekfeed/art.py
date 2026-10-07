@@ -4,6 +4,7 @@ so the game ships with zero image assets and scales to any icon size."""
 from __future__ import annotations
 
 import math
+from itertools import pairwise
 
 from . import draw as D
 
@@ -102,7 +103,7 @@ def decor(surf, key: str, center, s: float, t: float = 0.0, phase: float = 0.0) 
             ox = x + dx * s
             wob = math.sin(t * 2.5 + phase + k) * s * 0.03
             pts = [(ox + math.sin(j * 1.6 + t * 3 + k) * s * 0.04 + wob, y - s * 0.48 - j * s * 0.06) for j in range(5)]
-            for a, b in zip(pts, pts[1:]):
+            for a, b in pairwise(pts):
                 D.line(surf, (255, 180, 150), a, b, 2)
     elif key == "mush":
         pulse = 0.5 + 0.5 * math.sin(t * 2.0 + phase)

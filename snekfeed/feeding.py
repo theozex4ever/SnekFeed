@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import math
-from typing import Iterable, Literal
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
+from typing import Literal
 
 from . import config as C
-from .state import GameState, SNACKS_BY_KEY
+from .state import SNACKS_BY_KEY, GameState
 
 Denial = Literal["outstanding_cap", "locked", "tummy_full", "insufficient_hearts"]
 

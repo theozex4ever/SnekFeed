@@ -71,7 +71,7 @@ class Snek:
     def hit(self, pos) -> bool:
         p = Vector2(pos)
         r = self.radius * 1.25
-        return any(p.distance_squared_to(s) < r * r for s in self.segments[::2] + [self.head])
+        return any(p.distance_squared_to(s) < r * r for s in [*self.segments[::2], self.head])
 
     def petted(self) -> None:
         self.happy_t = 0.9

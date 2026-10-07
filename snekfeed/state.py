@@ -6,6 +6,7 @@ and balanced headlessly.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -313,7 +314,7 @@ class GameState:
         return d
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GameState":
+    def from_dict(cls, data: dict) -> GameState:
         """Decode supported saves; invalid known fields reject the whole save."""
         if not isinstance(data, dict):
             raise ValueError("save must be an object")
@@ -398,10 +399,8 @@ def save(state: GameState, path: str, now: float | None = None) -> bool:
         os.replace(tmp, path)
     except (OSError, ValueError, TypeError, OverflowError):
         if created_tmp:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp)
-            except OSError:
-                pass
         return False
     state.saved_at = timestamp
     return True
@@ -442,14 +441,11 @@ def _preserve_rejected_save(path: str) -> str:
         dir=os.path.dirname(path) or ".",
     )
     try:
-        with os.fdopen(descriptor, "wb") as target:
-            with open(path, "rb") as source:
-                shutil.copyfileobj(source, target)
+        with os.fdopen(descriptor, "wb") as target, open(path, "rb") as source:
+            shutil.copyfileobj(source, target)
     except OSError:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(backup)
-        except OSError:
-            pass
         raise
     return backup
 

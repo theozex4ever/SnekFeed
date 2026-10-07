@@ -10,7 +10,7 @@ from . import draw as D
 
 
 class Particle:
-    __slots__ = ("kind", "x", "y", "vx", "vy", "life", "max_life", "size", "color", "text", "phase")
+    __slots__ = ("color", "kind", "life", "max_life", "phase", "size", "text", "vx", "vy", "x", "y")
 
     def __init__(self, kind, x, y, vx, vy, life, size, color, text=""):
         self.kind, self.x, self.y, self.vx, self.vy = kind, x, y, vx, vy

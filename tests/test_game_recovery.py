@@ -10,8 +10,9 @@ def game_type(monkeypatch):
     monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
     monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
     monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-    from snekfeed.game import Game
     import pygame
+
+    from snekfeed.game import Game
 
     yield Game
     pygame.quit()
