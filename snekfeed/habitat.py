@@ -24,7 +24,6 @@ class Food:
         self.drop = drop_from  # height above ground
         self.vy = 0.0
         self.landed = False
-        self.taken = False
         self.bite = 0.0
         self.t = random.random() * 5
 

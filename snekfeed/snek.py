@@ -12,6 +12,8 @@ from pygame.math import Vector2
 
 from . import config as C
 from . import draw as D
+from .feeding import Feeding
+from .habitat import Food
 
 SKINS = {s.key: s for s in C.SKINS}
 
@@ -44,7 +46,7 @@ class Snek:
         self.tongue_t = 0.0
         self.tongue_cd = 3.0
         self.eat_t = 0.0
-        self.food = None
+        self.food_id: int | None = None
         self.bulges: list[float] = []
         self.grow_cd = 0.0
         self.look = Vector2()
@@ -81,8 +83,9 @@ class Snek:
 
     # ---- update -----------------------------------------------------------------------
 
-    def update(self, dt: float, foods: list, tummy_full: bool, mouse, butterfly_pos) -> object | None:
-        """Advance Snek. Returns a food item when Snek finishes eating it."""
+    def update(self, dt: float, foods: dict[int, Food], feeding: Feeding,
+               tummy_full: bool, mouse, butterfly_pos) -> None:
+        """Advance movement and request claims; observe feeding's meal clock."""
         self.t += dt
         self.happy_t = max(0.0, self.happy_t - dt)
         self.state_t -= dt
@@ -98,37 +101,40 @@ class Snek:
         else:
             self.look = Vector2(math.cos(self.heading), math.sin(self.heading))
 
-        eaten = None
+        snacks = {snack.id: snack for snack in feeding.snacks}
         if self.state == "eat":
-            self.eat_t += dt
-            if self.food is not None:
-                self.food.bite = min(1.0, self.eat_t / 0.45)
-            if self.eat_t >= 0.5:
-                eaten, self.food = self.food, None
+            meal = snacks.get(self.food_id) if self.food_id is not None else None
+            if meal is None:
+                self.food_id = None
                 self.state, self.state_t = "idle", random.uniform(0.6, 1.4)
+            else:
+                self.eat_t = meal.chew_seconds
             self._follow()
-            return eaten
+            return
 
-        live_foods = [f for f in foods if f.landed and not f.taken]
+        live_foods = [(snack_id, foods[snack_id]) for snack_id, snack in snacks.items()
+                      if snack.phase == "waiting" and snack_id in foods]
         if live_foods and self.state != "eat":
             if self.state == "sleep" and tummy_full:
                 pass  # food coma: the snack waits until Snek wakes up
             else:
-                self.food = min(live_foods, key=lambda f: self.head.distance_squared_to(f.pos))
+                self.food_id, food = min(live_foods, key=lambda pair: self.head.distance_squared_to(pair[1].pos))
                 self.state = "seek"
-                self.target = Vector2(self.food.pos)
+                self.target = Vector2(food.pos)
 
         if self.state == "seek":
-            if self.food is None or self.food.taken:
+            sought_food = foods.get(self.food_id) if self.food_id is not None else None
+            snack = snacks.get(self.food_id) if self.food_id is not None else None
+            if sought_food is None or snack is None or snack.phase != "waiting":
                 self.state, self.state_t = "idle", 0.5
-            elif self.head.distance_to(self.food.pos) < self.radius * 1.4 + 6:
-                self.food.taken = True
-                self.state, self.eat_t = "eat", 0.0
+            elif self.head.distance_to(sought_food.pos) < self.radius * 1.4 + 6:
+                if feeding.claim(snack.id):
+                    self.state, self.eat_t = "eat", 0.0
             else:
                 # Arrive steering: slow down and turn tighter near the snack so Snek never orbits it.
-                dist = self.head.distance_to(self.food.pos)
+                dist = self.head.distance_to(sought_food.pos)
                 k = max(0.4, min(1.0, dist / 90))
-                self._move_towards(self.food.pos, dt, speed=125 * k, turn=5.0 / k)
+                self._move_towards(sought_food.pos, dt, speed=125 * k, turn=5.0 / k)
         elif self.state == "wander":
             self._move_towards(self.target, dt, speed=62, turn=2.6)
             if self.head.distance_to(self.target) < 18 or self.state_t <= 0:
@@ -146,7 +152,6 @@ class Snek:
                 self.state, self.state_t = "idle", 1.0
 
         self._follow()
-        return eaten
 
     def _random_point(self) -> Vector2:
         m = int(self.radius * 2.5)
