@@ -7,6 +7,7 @@ import pytest
 from snekfeed import config as C
 from snekfeed import draw as D
 from snekfeed import state as S
+from snekfeed.feeding import Feeding
 from snekfeed.game import Game
 from snekfeed.ui import UI
 
@@ -150,7 +151,11 @@ def game(shop, monkeypatch):
     game = Game.__new__(Game)
     game.ui, game.st = ui, st
     game.audio = Mock()
-    game.foods = [object()]
+    game.feeding = Feeding(st)
+    game.feeding.feast()
+    game.foods = {}
+    game._sync_foods = Mock()
+    game.saving_allowed = True
     game.snek = Mock(head=SimpleNamespace(x=100, y=100))
     game.snek.hit.return_value = False
     game.fx = Mock()
@@ -162,14 +167,14 @@ def game(shop, monkeypatch):
 
 def test_game_executes_only_confirmed_shed_and_keeps_save_trigger(game):
     game.mouse_down(SHED_BUTTON)
-    assert game.st.sheds == 0 and len(game.foods) == 1
+    assert game.st.sheds == 0 and len(game.feeding.snacks) == 3
     game.audio.play.assert_not_called()
     game.snek.hit.assert_not_called()
     S.save.assert_not_called()
 
     game.mouse_down(SHED_BUTTON)
     assert game.st.sheds == 1 and game.st.level == 1
-    assert game.foods == []
+    assert game.feeding.snacks == ()
     game.snek.reset.assert_called_once_with(game.st.level)
     game.fx.sparkles.assert_called_once()
     game.audio.play.assert_called_once_with("shed")

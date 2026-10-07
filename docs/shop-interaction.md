@@ -28,7 +28,7 @@ testing filters all configured slots against current unlocks on each click.
 
 Returned actions are executed synchronously against the same current state.
 They are not stored authorizations: deferring them would require revisiting this
-interface. Game routing assigns an accepted skin. `GameState.shed()` remains the
+interface. Game routing assigns an accepted skin. `Feeding.shed()` (which wraps `GameState.shed()`) is the
 authority for executing a shed; a zero gain causes denial without visual resets.
 
 ## Integration with sibling work
@@ -37,8 +37,9 @@ Required edits in `snekfeed/game.py` are limited to two areas:
 
 1. `mouse_down` supplies `self.st` to `self.ui.click(pos, self.st)`.
 2. `do_action` handles the `deny` result and treats `shed` as already confirmed.
-   It no longer reads or writes UI confirmation. The economy shed, floor clearing,
-   Snek reset, effects, toast, sound, and immediate save trigger stay in game routing.
+   It no longer reads or writes UI confirmation. The shed itself runs through
+   `Feeding.shed()`, which resets the economy and cancels outstanding snacks. Snek
+   reset, effects, toast, sound, and the immediate save trigger stay in game routing.
 
 The existing `self.ui.update(dt, self.mouse)` call advances confirmation time.
 Keep its ordering relative to input when integrating the other candidates.

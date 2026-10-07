@@ -28,6 +28,9 @@ Python 3.10+ and pygame 2.5+.
 
 The game autosaves every 30 seconds and on exit. Saves go to `~/.local/share/snekfeed/save.json` on Linux,
 `%APPDATA%\snekfeed` on Windows, and `~/Library/Application Support/snekfeed` on macOS.
+Malformed saves are kept in a sibling `save.json.rejected-*.bak` before starting fresh.
+If a save cannot be read, has an unsupported version, or cannot be backed up,
+the game warns you and protects the existing file by disabling saving for that session.
 
 ## The loop
 
@@ -37,7 +40,8 @@ The design borrows the parts that make the best games in this space stick.
    Stroking Snek with the mouse held gives pets too, because it feels nicer than clicking.
 2. **Buy snacks, Snek grows.** Snacks give growth points. Every level adds +15% to all hearts, makes Snek
    visibly longer and chubbier, and unlocks the next snack, decor or care item. The next unlocks show as `???`.
-3. **Tummy gates feeding.** Snek digests over time and can't eat on a full tummy. Hearts aren't the only limit,
+3. **Tummy gates feeding.** Snek digests over time. Buying snacks reserves tummy space until they are eaten,
+   including while Snek chews, so a full tummy stops further purchases. Hearts aren't the only limit,
    which gives the *Tamagotchi* or *Finch* rhythm of checking back in. A full Snek naps in a food coma.
    Nothing is ever punished. Snek can't get sick or leave.
 4. **Mood is a bonus, never a penalty.** Pets and snacks raise mood, which multiplies hearts from 1.0x to 1.5x.
@@ -59,6 +63,7 @@ The design borrows the parts that make the best games in this space stick.
 snekfeed/
   config.py   palette, layout and every economy table (start balancing here)
   state.py    game state and economy rules, pygame-free and unit tested
+  feeding.py  snack lifecycle, reservations, Auto Bowl and meal credit, pygame-free
   snek.py     Snek's movement, moods and rendering
   habitat.py  terrarium, decor layout, dropped snacks, golden butterfly
   ui.py       HUD, shop panel, shed screen, toasts, hints
