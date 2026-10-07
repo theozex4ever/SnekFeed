@@ -71,9 +71,18 @@ class UI:
         for i, (key, _) in enumerate(TABS):
             self.tab_rects[key] = pygame.Rect(self.panel.x + 16 + int(i * tw), self.panel.y + 64, int(tw) - 6, 40)
         self.rows_top = self.panel.y + 118
-        self.shed_confirm = 0.0
-        self.shed_button = pygame.Rect(0, 0, 0, 0)
-        self.skin_rects: dict[str, pygame.Rect] = {}
+        self._shed_confirm = 0.0
+        self._shed_card = pygame.Rect(self.panel.x + 14, self.rows_top, self.panel.w - 28, 250)
+        self._shed_button = pygame.Rect(self._shed_card.x + 16, self.rows_top + 180,
+                                       self._shed_card.w - 32, 46)
+        self._skins_card = pygame.Rect(self.panel.x + 14, self._shed_card.bottom + 12,
+                                      self.panel.w - 28, 200)
+        # Keep every slot; eligibility comes from current state, never a draw.
+        self._skin_rects: dict[str, pygame.Rect] = {}
+        for i, skin in enumerate(C.SKINS):
+            cx = self._skins_card.x + 46 + (i % 4) * 82
+            cy = self._skins_card.y + 76 + (i // 4) * 80
+            self._skin_rects[skin.key] = pygame.Rect(cx - 30, cy - 30, 60, 60)
         self.hover = None
         self.t = 0.0
         self.toasts = Toasts()
@@ -87,8 +96,14 @@ class UI:
     def items(self) -> list:
         return {"snacks": C.SNACKS, "home": C.DECOR, "care": C.CARE}.get(self.tab, [])
 
-    def click(self, pos) -> tuple | None:
-        """Translate a click into an action tuple, or None."""
+    def click(self, pos, st: GameState) -> tuple | None:
+        """Translate a click using current state, without requiring a draw.
+
+        Shed confirmation is handled here: an arming click returns noop,
+        an unavailable shed returns deny, and only confirmation returns shed.
+        Skin actions contain currently unlocked keys. Execute returned actions
+        immediately; they are not queued authorizations for a later state.
+        """
         if self.welcome:
             self.welcome = None
             return ("noop",)
@@ -97,13 +112,20 @@ class UI:
         for key, rect in self.tab_rects.items():
             if rect.collidepoint(pos):
                 self.tab = key
-                self.shed_confirm = 0.0
+                self._shed_confirm = 0.0
                 return ("tab",)
         if self.tab == "shed":
-            if self.shed_button.collidepoint(pos):
+            if self._shed_button.collidepoint(pos):
+                if st.shed_gain() == 0:
+                    return ("deny",)
+                if self._shed_confirm <= 0:
+                    self._shed_confirm = 3.0
+                    return ("noop",)
+                self._shed_confirm = 0.0
                 return ("shed",)
-            for key, rect in self.skin_rects.items():
-                if rect.collidepoint(pos):
+            unlocked = st.unlocked_skins()
+            for key, rect in self._skin_rects.items():
+                if key in unlocked and rect.collidepoint(pos):
                     return ("skin", key)
             return None
         for i, item in enumerate(self.items()):
@@ -113,7 +135,7 @@ class UI:
 
     def update(self, dt: float, mouse) -> None:
         self.t += dt
-        self.shed_confirm = max(0.0, self.shed_confirm - dt)
+        self._shed_confirm = max(0.0, self._shed_confirm - dt)
         self.toasts.update(dt)
         self.hover = mouse
 
@@ -262,7 +284,7 @@ class UI:
     def _draw_shed(self, surf, st: GameState, skin_preview) -> None:
         p = self.panel
         x, y = p.x + 22, self.rows_top
-        card = pygame.Rect(p.x + 14, y, p.w - 28, 250)
+        card = self._shed_card
         D.panel(surf, card, C.WHITE, 18, 3)
         D.text(surf, "Shed Skin", (x + 8, y + 12), 22, C.INK, True)
         msg = ("Once Snek reaches Lv 15, Snek can shed their skin. Snek becomes tiny again and the home resets, "
@@ -272,28 +294,23 @@ class UI:
         sy = y + 150
         D.text(surf, f"Shimmer Scales: {st.scales}  (x{st.scale_mult():.2f} hearts)", (x + 8, sy), 14, C.INK, True)
         gain = st.shed_gain()
-        self.shed_button = pygame.Rect(card.x + 16, sy + 30, card.w - 32, 46)
         if gain:
-            col = C.PINK if self.shed_confirm > 0 else C.BUTTER
-            label = "Really? Click again to shed" if self.shed_confirm > 0 else f"Shed now for +{gain} scales"
+            col = C.PINK if self._shed_confirm > 0 else C.BUTTER
+            label = "Really? Click again to shed" if self._shed_confirm > 0 else f"Shed now for +{gain} scales"
         else:
             col, label = C.DISABLED, f"Grow Snek to Lv {C.SHED_MIN_LEVEL} first"
-        hover = gain and self.hover is not None and self.shed_button.collidepoint(self.hover)
-        D.panel(surf, self.shed_button.move(0, -2 if hover else 0), col, 16, 3 if gain else 0)
-        D.text(surf, label, self.shed_button.center, 16, C.INK if gain else C.INK_SOFT, True, "center")
+        hover = gain and self.hover is not None and self._shed_button.collidepoint(self.hover)
+        D.panel(surf, self._shed_button.move(0, -2 if hover else 0), col, 16, 3 if gain else 0)
+        D.text(surf, label, self._shed_button.center, 16, C.INK if gain else C.INK_SOFT, True, "center")
 
         # Skins
-        sk = pygame.Rect(p.x + 14, card.bottom + 12, p.w - 28, 200)
+        sk = self._skins_card
         D.panel(surf, sk, C.WHITE, 18, 3)
         D.text(surf, "Skins", (sk.x + 16, sk.y + 12), 20, C.INK, True)
         unlocked = st.unlocked_skins()
-        self.skin_rects = {}
-        for i, skin in enumerate(C.SKINS):
-            cx = sk.x + 46 + (i % 4) * 82
-            cy = sk.y + 76 + (i // 4) * 80
-            rect = pygame.Rect(cx - 30, cy - 30, 60, 60)
+        for skin in C.SKINS:
+            cx, cy = self._skin_rects[skin.key].center
             if skin.key in unlocked:
-                self.skin_rects[skin.key] = rect
                 if skin.key == st.skin:
                     D.circle(surf, C.LILAC, (cx, cy), 33)
                 skin_preview(surf, skin.key, (cx, cy))

@@ -36,3 +36,7 @@ A golden butterfly reward consisting of three free snacks.
 
 **Auto Bowl**:
 A care upgrade that spends hearts to offer a snack when Snek is peckish and no outstanding snack remains.
+
+**Shed confirmation**:
+The temporary invitation to confirm shedding with a second click on Shed. Choosing a shop tab cancels it; choosing a skin does not.
+_Avoid_: Shed cooldown

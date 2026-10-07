@@ -48,7 +48,6 @@ def test_protected_session_never_saves_on_shed_autosave_or_exit(
     assert not game.saving_allowed
     assert "won't be saved" in game.ui.toasts.queue[0][0]
     game.st.level = 20
-    game.ui.shed_confirm = 1
     game.do_action(("shed",))
     game.save_timer = 0
     game.update(0.1)
