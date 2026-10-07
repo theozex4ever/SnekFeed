@@ -199,7 +199,8 @@ class Snek:
             used += 1
             d = prev.distance_to(p)
             while i < n and d > 0 and walked + d >= want:
-                self.segments[i] = prev.lerp(p, (want - walked) / d)
+                # Rounding can push the ratio a hair past 1, which Vector2.lerp rejects.
+                self.segments[i] = prev.lerp(p, min(1.0, (want - walked) / d))
                 i += 1
                 want += gap
             walked += d
