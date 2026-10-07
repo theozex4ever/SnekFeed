@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import random
+import sys
 
 import pygame
 from pygame.math import Vector2
@@ -36,13 +37,23 @@ class Game:
         self.save_path = save_path or S.default_save_path()
         self.debug = os.environ.get("SNEKFEED_DEBUG") == "1"
 
-        loaded = S.load(self.save_path)
-        self.st = loaded or S.GameState()
+        recovery = S.recover(self.save_path)
+        self.st = recovery.state
+        self.saving_allowed = recovery.can_save
         self.ui = UI()
-        if loaded:
-            away, earned = self.st.apply_offline()
-            if away > 60 and earned >= 1:
-                self.ui.welcome = (away, earned)
+        if recovery.away > 60 and recovery.earned >= 1:
+            self.ui.welcome = (recovery.away, recovery.earned)
+        if recovery.problem:
+            messages = {
+                "invalid_save": "Couldn't read your save. Kept a backup and started fresh.",
+                "unsupported_version": "Save version unsupported. Fresh play won't be saved.",
+                "read_failed": "Couldn't open your save. Fresh play won't be saved.",
+                "preserve_failed": "Couldn't back up your invalid save. Fresh play won't be saved.",
+                "checkpoint_failed": "Couldn't save progress. Will try again at the next save.",
+            }
+            self.ui.toasts.push(messages[recovery.problem], C.PEACH)
+        if recovery.preserved_path:
+            print(f"Original save preserved at {recovery.preserved_path}", file=sys.stderr)
 
         self.habitat = Habitat()
         self.snek = Snek(self.habitat.inner, self.st.level)
@@ -80,6 +91,20 @@ class Game:
         current_ids = {snack.id for snack in current}
         for snack_id in self.foods.keys() - current_ids:
             del self.foods[snack_id]
+
+    def _save_progress(self, exiting: bool = False) -> bool:
+        if not self.saving_allowed:
+            if exiting:
+                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.",
+                      file=sys.stderr)
+            return False
+        if S.save(self.st, self.save_path):
+            return True
+        if exiting:
+            print(f"Couldn't save progress to {self.save_path}.", file=sys.stderr)
+        else:
+            self.ui.toasts.push("Couldn't save progress. Will try again at the next save.", C.PEACH)
+        return False
 
     def _make_icon(self) -> pygame.Surface:
         icon = pygame.Surface((64, 64), pygame.SRCALPHA)
@@ -147,7 +172,7 @@ class Game:
                 self.fx.sparkles(self.snek.head.x, self.snek.head.y, 40, C.LILAC, 90)
                 self.ui.toasts.push(f"Snek shed their skin! +{gain} Shimmer Scales", C.BUTTER)
                 self.audio.play("shed")
-                S.save(self.st, self.save_path)
+                self._save_progress()
         elif kind == "skin":
             self.st.skin = action[1]
             self.audio.play("pet")
@@ -276,7 +301,7 @@ class Game:
         self.save_timer -= dt
         if self.save_timer <= 0:
             self.save_timer = AUTOSAVE_EVERY
-            S.save(st, self.save_path)
+            self._save_progress()
 
     def draw(self) -> None:
         surf = self.screen
@@ -328,8 +353,10 @@ class Game:
                 self.draw()
                 pygame.display.flip()
         finally:
-            S.save(self.st, self.save_path)
-            pygame.quit()
+            try:
+                self._save_progress(exiting=True)
+            finally:
+                pygame.quit()
 
 
 def main() -> None:

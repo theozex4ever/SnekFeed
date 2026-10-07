@@ -192,7 +192,7 @@ class UI:
             cost = item.cost
             eligibility = feeding.eligibility(item.key)
             ok = eligibility.allowed
-            full = unlocked and eligibility.denial in ("tummy_full", "outstanding_cap")
+            full = unlocked and eligibility.denial == "tummy_full"
             badge = f"+{fmt(item.xp)} growth"
         elif self.tab == "home":
             cost = st.decor_cost(item.key)

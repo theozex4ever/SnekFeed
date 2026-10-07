@@ -223,3 +223,37 @@ def test_only_one_meal_can_be_claimed_and_credits_report_level_growth():
     assert state.level == 2
     assert feeding.claim(ids[1])
     assert feeding.advance(0.49) == (), "the next claim starts its own half-second"
+
+
+def test_snack_rows_show_price_not_full_when_only_the_outstanding_cap_blocks(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    pygame = pytest.importorskip("pygame")
+    from snekfeed import config as C
+    from snekfeed import ui as ui_module
+
+    pygame.init()
+    try:
+        surf = pygame.Surface((1280, 800))
+        state = GameState(hearts=1e6, tummy=0.0)
+        feeding = Feeding(state)
+        for _ in range(C.MAX_SNACKS_ON_FLOOR):
+            feeding.feast()
+        assert feeding.eligibility(C.SNACKS[0].key).denial == "outstanding_cap"
+
+        labels = []
+        monkeypatch.setattr(ui_module.D, "text", lambda s, text, *a, **k: labels.append(text))
+        ui = ui_module.UI()
+        ui._draw_row(surf, state, 0, C.SNACKS[0], feeding)
+        assert "Full!" not in labels
+
+        state.tummy = C.TUMMY_MAX
+        labels.clear()
+        ui._draw_row(surf, state, 0, C.SNACKS[0], feeding)
+        assert "Full!" not in labels  # cap still takes precedence over a full tummy
+
+        feeding = Feeding(state)
+        labels.clear()
+        ui._draw_row(surf, state, 0, C.SNACKS[0], feeding)
+        assert "Full!" in labels
+    finally:
+        pygame.quit()
