@@ -10,9 +10,12 @@ import json
 import math
 import os
 import random
+import shutil
 import sys
+import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from typing import Literal
 
 from . import config as C
 
@@ -20,6 +23,29 @@ SNACKS_BY_KEY = {s.key: s for s in C.SNACKS}
 DECOR_BY_KEY = {d.key: d for d in C.DECOR}
 CARE_BY_KEY = {c.key: c for c in C.CARE}
 SAVE_VERSION = 1
+
+
+class _UnsupportedSaveVersion(ValueError):
+    pass
+
+
+def _number(value: object, name: str) -> float:
+    if type(value) not in (int, float):
+        raise ValueError(f"{name} must be a number")
+    try:
+        value = float(value)
+    except OverflowError as error:
+        raise ValueError(f"{name} is too large") from error
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be finite and nonnegative")
+    return value
+
+
+def _count(value: object, name: str, minimum: int = 0) -> int:
+    if type(value) is not int or value < minimum:
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+    _number(value, name)
+    return value
 
 
 def xp_needed(level: int) -> float:
@@ -282,20 +308,64 @@ class GameState:
     # ---- persistence -----------------------------------------------------------------
 
     def to_dict(self) -> dict:
-        d = dict(self.__dict__)
+        d = {f.name: getattr(self, f.name) for f in fields(self)}
         d["version"] = SAVE_VERSION
         return d
 
     @classmethod
     def from_dict(cls, data: dict) -> "GameState":
+        """Decode supported saves; invalid known fields reject the whole save."""
+        if not isinstance(data, dict):
+            raise ValueError("save must be an object")
+        version = data.get("version", SAVE_VERSION)
+        if type(version) is not int:
+            raise ValueError("version must be an integer")
+        if version != SAVE_VERSION:
+            raise _UnsupportedSaveVersion(f"unsupported save version: {version}")
         state = cls()
-        for key, value in data.items():
+        counts = {"level", "scales", "sheds", "pets", "snacks_eaten"}
+        for f in fields(cls):
+            key = f.name
+            if key not in data:
+                continue
+            value = data[key]
             if key in ("decor", "care"):
-                getattr(state, key).update(
-                    {k: int(v) for k, v in value.items() if k in getattr(state, key)}
-                )
-            elif hasattr(state, key):
-                setattr(state, key, value)
+                if not isinstance(value, dict):
+                    raise ValueError(f"{key} must be an object")
+                target = getattr(state, key)
+                for item in target:
+                    if item in value:
+                        count = _count(value[item], f"{key}.{item}")
+                        if key == "care" and count > CARE_BY_KEY[item].max_level:
+                            raise ValueError(f"{key}.{item} exceeds its maximum")
+                        target[item] = count
+            elif key in counts:
+                setattr(state, key, _count(value, key, 1 if key == "level" else 0))
+            elif key == "skin":
+                if not isinstance(value, str):
+                    raise ValueError("skin must be a string")
+                state.skin = value
+            else:
+                setattr(state, key, _number(value, key))
+        if state.tummy > C.TUMMY_MAX or state.mood > C.MOOD_MAX:
+            raise ValueError("tummy or mood exceeds its maximum")
+        try:
+            needed = xp_needed(state.level)
+            if state.xp >= needed:
+                raise ValueError("XP must be below the next level requirement")
+            # Validate calculations the restored game will immediately use,
+            # without adding level or decor caps to the economy.
+            credit = state.passive_rate(False) * C.OFFLINE_CAP_SECONDS * C.OFFLINE_EFFICIENCY
+            derived = [needed, state.pet_value(), state.passive_rate(), credit]
+            derived += [state.decor_cost(key) for key in state.decor]
+            derived += [state.care_cost(key) for key in state.care]
+            derived += [amount + credit for amount in (
+                state.hearts, state.run_hearts, state.lifetime_hearts
+            )]
+            if not all(math.isfinite(value) for value in derived):
+                raise ValueError("save calculations must remain finite")
+        except OverflowError as error:
+            raise ValueError("save calculations overflow") from error
         if state.skin not in state.unlocked_skins():
             state.skin = "mint"
         return state
@@ -311,21 +381,105 @@ def default_save_path() -> str:
     return os.path.join(root, "snekfeed", "save.json")
 
 
-def save(state: GameState, path: str) -> None:
-    state.saved_at = time.time()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def save(state: GameState, path: str, now: float | None = None) -> bool:
+    """Atomically checkpoint progress; failure leaves its timestamp unchanged."""
+    path = os.fspath(path)
     tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(state.to_dict(), f, indent=1)
-    os.replace(tmp, path)
+    created_tmp = False
+    try:
+        timestamp = _number(time.time() if now is None else now, "now")
+        data = state.to_dict()
+        data["saved_at"] = timestamp
+        GameState.from_dict(data)
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(tmp, "w", encoding="utf-8") as f:
+            created_tmp = True
+            json.dump(data, f, indent=1, allow_nan=False)
+        os.replace(tmp, path)
+    except (OSError, ValueError, TypeError, OverflowError):
+        if created_tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        return False
+    state.saved_at = timestamp
+    return True
+
+
+def _read_save(path: str, now: float | None = None) -> GameState:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if now is not None and isinstance(data, dict):
+        data.setdefault("saved_at", now)
+    return GameState.from_dict(data)
 
 
 def load(path: str) -> GameState | None:
+    """Read validated state without applying offline credit or writing files."""
     try:
-        with open(path, encoding="utf-8") as f:
-            return GameState.from_dict(json.load(f))
-    except (OSError, ValueError, TypeError):
+        return _read_save(path)
+    except (OSError, ValueError, TypeError, RecursionError):
         return None
+
+
+@dataclass(frozen=True)
+class Recovery:
+    state: GameState
+    away: float = 0.0
+    earned: float = 0.0
+    problem: Literal[
+        "invalid_save", "unsupported_version", "read_failed",
+        "preserve_failed", "checkpoint_failed"
+    ] | None = None
+    can_save: bool = True
+    preserved_path: str | None = None
+
+
+def _preserve_rejected_save(path: str) -> str:
+    descriptor, backup = tempfile.mkstemp(
+        prefix=os.path.basename(path) + ".rejected-", suffix=".bak",
+        dir=os.path.dirname(path) or ".",
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as target:
+            with open(path, "rb") as source:
+                shutil.copyfileobj(source, target)
+    except OSError:
+        try:
+            os.unlink(backup)
+        except OSError:
+            pass
+        raise
+    return backup
+
+
+def recover(path: str, now: float | None = None) -> Recovery:
+    """Restore playable progress and checkpoint offline credit once.
+
+    A failed checkpoint keeps credit in memory for the next save attempt;
+    reopening before a successful write can recover the disk interval again.
+    Unsupported or unreadable saves must not be overwritten by the session.
+    """
+    path = os.fspath(path)
+    now = _number(time.time() if now is None else now, "now")
+    try:
+        state = _read_save(path, now)
+    except FileNotFoundError:
+        return Recovery(GameState(saved_at=now))
+    except _UnsupportedSaveVersion:
+        return Recovery(GameState(saved_at=now), problem="unsupported_version", can_save=False)
+    except OSError:
+        return Recovery(GameState(saved_at=now), problem="read_failed", can_save=False)
+    except (ValueError, TypeError, RecursionError):
+        try:
+            backup = _preserve_rejected_save(path)
+        except OSError:
+            return Recovery(GameState(saved_at=now), problem="preserve_failed", can_save=False)
+        return Recovery(GameState(saved_at=now), problem="invalid_save", preserved_path=backup)
+    away, earned = state.apply_offline(now)
+    problem = None if save(state, path, now) else "checkpoint_failed"
+    return Recovery(state, away, earned, problem)
 
 
 def fmt(n: float) -> str:

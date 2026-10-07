@@ -28,6 +28,9 @@ Python 3.10+ and pygame 2.5+.
 
 The game autosaves every 30 seconds and on exit. Saves go to `~/.local/share/snekfeed/save.json` on Linux,
 `%APPDATA%\snekfeed` on Windows, and `~/Library/Application Support/snekfeed` on macOS.
+Malformed saves are kept in a sibling `save.json.rejected-*.bak` before starting fresh.
+If a save cannot be read, has an unsupported version, or cannot be backed up,
+the game warns you and protects the existing file by disabling saving for that session.
 
 ## The loop
 
