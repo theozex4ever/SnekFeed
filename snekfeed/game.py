@@ -98,6 +98,8 @@ class Game:
             self.audio.muted = not self.audio.muted
         elif kind == "tab":
             self.audio.play("pet")
+        elif kind == "deny":
+            self.audio.play("deny")
         elif kind == "snack":
             key = action[1]
             if len(self.foods) >= C.MAX_SNACKS_ON_FLOOR:
@@ -125,13 +127,10 @@ class Game:
             else:
                 self.audio.play("deny")
         elif kind == "shed":
-            if self.st.shed_gain() == 0:
+            gain = self.st.shed()
+            if gain == 0:
                 self.audio.play("deny")
-            elif self.ui.shed_confirm <= 0:
-                self.ui.shed_confirm = 3.0
             else:
-                self.ui.shed_confirm = 0.0
-                gain = self.st.shed()
                 self.foods.clear()
                 self.snek.reset(self.st.level)
                 self.fx.sparkles(self.snek.head.x, self.snek.head.y, 40, C.LILAC, 90)
@@ -215,7 +214,7 @@ class Game:
             self.last_mouse = event.pos
 
     def mouse_down(self, pos) -> None:
-        action = self.ui.click(pos)
+        action = self.ui.click(pos, self.st)
         if action:
             self.do_action(action)
             return
