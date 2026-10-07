@@ -15,6 +15,7 @@ from . import config as C
 from . import draw as D
 from . import state as S
 from .audio import Audio
+from .feeding import Denial, Feeding, MealCredit
 from .fx import FX
 from .habitat import Butterfly, Food, Habitat
 from .snek import Snek
@@ -57,7 +58,8 @@ class Game:
         self.habitat = Habitat()
         self.snek = Snek(self.habitat.inner, self.st.level)
         self.fx = FX()
-        self.foods: list[Food] = []
+        self.feeding = Feeding(self.st)
+        self.foods: dict[int, Food] = {}  # Presentation only; feeding owns membership.
         self.butterfly: Butterfly | None = None
         self.butterfly_timer = random.uniform(C.BUTTERFLY_MIN_GAP * 0.5, C.BUTTERFLY_MAX_GAP * 0.6)
         self.save_timer = AUTOSAVE_EVERY
@@ -72,8 +74,23 @@ class Game:
 
     # ---- helpers ---------------------------------------------------------------------
 
-    def pending_fill(self) -> float:
-        return sum(S.SNACKS_BY_KEY[f.key].fill for f in self.foods if not f.taken)
+    def _sync_foods(self) -> None:
+        """Project feeding observations onto food physics and appearance."""
+        current = self.feeding.snacks
+        for snack in current:
+            if snack.id not in self.foods:
+                if snack.source == "bowl":
+                    pos = Vector2(self.habitat.bowl_pos.x - 50, self.habitat.bowl_pos.y - 6)
+                    height = 60
+                else:
+                    pos = self.habitat.random_drop_point(self.snek.head)
+                    height = 200 + snack.ordinal * 60 if snack.source == "feast" else 180
+                self.foods[snack.id] = Food(snack.key, pos, height)
+            food = self.foods[snack.id]
+            food.bite = snack.bite
+        current_ids = {snack.id for snack in current}
+        for snack_id in self.foods.keys() - current_ids:
+            del self.foods[snack_id]
 
     def _save_progress(self, exiting: bool = False) -> bool:
         if not self.saving_allowed:
@@ -113,10 +130,6 @@ class Game:
         self.fx.popup(pos[0], pos[1] - 30, f"+{S.fmt(value)}")
         self.audio.play("pet")
 
-    def drop_food(self, key: str, at=None, from_height: float = 180) -> None:
-        pos = at if at is not None else self.habitat.random_drop_point(self.snek.head)
-        self.foods.append(Food(key, pos, from_height))
-
     def do_action(self, action: tuple) -> None:
         kind = action[0]
         if kind == "mute":
@@ -124,15 +137,12 @@ class Game:
         elif kind == "tab":
             self.audio.play("pet")
         elif kind == "snack":
-            key = action[1]
-            if len(self.foods) >= C.MAX_SNACKS_ON_FLOOR:
-                self.ui.toasts.push("That's plenty of snacks for now!")
-                self.audio.play("deny")
-            elif self.st.buy_snack(key, self.pending_fill()):
-                self.drop_food(key)
+            purchase = self.feeding.buy(action[1])
+            if purchase.snack_id is not None:
+                self._sync_foods()
                 self.audio.play("buy")
             else:
-                self._deny_reason(key)
+                self._deny_reason(purchase.denial)
         elif kind == "decor":
             if self.st.buy_decor(action[1]):
                 self.audio.play("buy")
@@ -156,8 +166,8 @@ class Game:
                 self.ui.shed_confirm = 3.0
             else:
                 self.ui.shed_confirm = 0.0
-                gain = self.st.shed()
-                self.foods.clear()
+                gain = self.feeding.shed()
+                self._sync_foods()
                 self.snek.reset(self.st.level)
                 self.fx.sparkles(self.snek.head.x, self.snek.head.y, 40, C.LILAC, 90)
                 self.ui.toasts.push(f"Snek shed their skin! +{gain} Shimmer Scales", C.BUTTER)
@@ -167,15 +177,16 @@ class Game:
             self.st.skin = action[1]
             self.audio.play("pet")
 
-    def _deny_reason(self, key: str) -> None:
+    def _deny_reason(self, denial: Denial | None) -> None:
         self.audio.play("deny")
-        if not self.st.snack_unlocked(key):
-            return
-        if not self.st.has_room(self.pending_fill()):
+        if denial == "outstanding_cap":
+            self.ui.toasts.push("That's plenty of snacks for now!")
+        elif denial == "tummy_full":
             self.ui.toasts.push("Snek's tummy is full! Let Snek digest a bit.", C.PEACH)
 
-    def on_eaten(self, food: Food) -> None:
-        levels = self.st.eat(food.key)
+    def on_eaten(self, credit: MealCredit) -> None:
+        food = self.foods[credit.snack_id]
+        levels = credit.levels_gained
         self.snek.swallow()
         snack = S.SNACKS_BY_KEY[food.key]
         self.fx.crumbs(food.pos.x, food.pos.y, snack.color, 8)
@@ -203,10 +214,8 @@ class Game:
         elif kind == "frenzy":
             self.ui.toasts.push(f"Butterfly blessing! Hearts x{int(C.FRENZY_MULT)} for {int(amount)}s", C.BUTTER)
         else:
-            best = self.st.best_snack()
-            for i in range(3):
-                p = self.habitat.random_drop_point(self.snek.head)
-                self.drop_food(best, p, 200 + i * 60)
+            self.feeding.feast()
+            self._sync_foods()
             self.ui.toasts.push("Butterfly feast! Free snacks rain down", C.BUTTER)
 
     # ---- loop --------------------------------------------------------------------------------
@@ -257,22 +266,22 @@ class Game:
         st = self.st
         st.tick(dt)
 
-        for f in self.foods:
+        landed_ids = []
+        for snack_id, f in self.foods.items():
             if f.update(dt):
+                landed_ids.append(snack_id)
                 self.audio.play("plop")
                 self.fx.crumbs(f.pos.x, f.pos.y + 6, (200, 235, 210), 4)
 
-        pick = st.auto_bowl_pick(self.pending_fill())
-        if pick:
-            self.drop_food(pick, Vector2(self.habitat.bowl_pos.x - 50, self.habitat.bowl_pos.y - 6), 60)
+        for credit in self.feeding.advance(dt, landed_ids=landed_ids):
+            self.on_eaten(credit)
+        self._sync_foods()
 
         tummy_full = st.tummy > C.TUMMY_MAX * 0.85
         bf_pos = self.butterfly.pos if self.butterfly else None
         mouse = self.mouse if self.mouse and self.habitat.rect.collidepoint(self.mouse) else None
-        eaten = self.snek.update(dt, self.foods, tummy_full, mouse, bf_pos)
-        if eaten is not None:
-            self.foods.remove(eaten)
-            self.on_eaten(eaten)
+        self.snek.update(dt, self.foods, self.feeding, tummy_full, mouse, bf_pos)
+        self._sync_foods()
         if self.snek.wants_zzz():
             self.fx.zzz(self.snek.head.x + 14, self.snek.head.y - 24)
 
@@ -299,7 +308,7 @@ class Game:
         surf.fill(C.CREAM)
         self.habitat.draw_background(surf)
         self.habitat.draw_decor(surf, self.st.decor, self.t, self.st.care["bowl"] > 0)
-        for f in sorted(self.foods, key=lambda f: f.pos.y):
+        for f in sorted(self.foods.values(), key=lambda f: f.pos.y):
             f.draw(surf)
         self.snek.draw(surf, self.st.skin)
         self._draw_thought(surf)
@@ -310,12 +319,12 @@ class Game:
             self._draw_frenzy(surf)
         self.ui.draw_hint(surf, self.st, self.habitat.rect)
         self.ui.draw_hud(surf, self.st, self.audio.muted)
-        self.ui.draw_panel(surf, self.st, self.pending_fill(), self.draw_skin_preview)
+        self.ui.draw_panel(surf, self.st, self.feeding, self.draw_skin_preview)
         self.ui.toasts.draw(surf, self.habitat.rect.centerx, self.habitat.rect.y + 30)
         self.ui.draw_welcome(surf)
 
     def _draw_thought(self, surf) -> None:
-        if not self.st.is_peckish() or self.foods or self.snek.state == "sleep":
+        if not self.st.is_peckish() or self.feeding.snacks or self.snek.state == "sleep":
             return
         h = self.snek.head
         bob = math.sin(self.t * 3) * 3

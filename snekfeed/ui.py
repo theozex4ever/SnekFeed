@@ -9,6 +9,7 @@ import pygame
 from . import art
 from . import config as C
 from . import draw as D
+from .feeding import Feeding
 from .state import GameState, fmt, xp_needed
 
 TABS = [("snacks", "Snacks"), ("home", "Home"), ("care", "Care"), ("shed", "Shed")]
@@ -161,7 +162,7 @@ class UI:
 
     # ---- panel -----------------------------------------------------------------------
 
-    def draw_panel(self, surf, st: GameState, pending_fill: float, skin_preview) -> None:
+    def draw_panel(self, surf, st: GameState, feeding: Feeding, skin_preview) -> None:
         p = self.panel
         D.panel(surf, p, (252, 248, 255), 26, 5)
         D.text(surf, "Snek Feed", (p.x + 22, p.y + 14), 28, C.INK, True)
@@ -181,16 +182,17 @@ class UI:
             self._draw_shed(surf, st, skin_preview)
             return
         for i, item in enumerate(self.items()):
-            self._draw_row(surf, st, i, item, pending_fill)
+            self._draw_row(surf, st, i, item, feeding)
 
-    def _draw_row(self, surf, st: GameState, i: int, item, pending_fill: float) -> None:
+    def _draw_row(self, surf, st: GameState, i: int, item, feeding: Feeding) -> None:
         rect = self.row_rect(i)
         unlocked = st.level >= item.unlock_level
         hover = unlocked and self.hover is not None and rect.collidepoint(self.hover)
         if self.tab == "snacks":
             cost = item.cost
-            ok = st.can_buy_snack(item.key, pending_fill)
-            full = unlocked and not st.has_room(pending_fill)
+            eligibility = feeding.eligibility(item.key)
+            ok = eligibility.allowed
+            full = unlocked and eligibility.denial == "tummy_full"
             badge = f"+{fmt(item.xp)} growth"
         elif self.tab == "home":
             cost = st.decor_cost(item.key)
