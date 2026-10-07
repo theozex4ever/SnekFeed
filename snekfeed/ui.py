@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 
 import pygame
 
@@ -93,8 +94,9 @@ class UI:
     def row_rect(self, i: int) -> pygame.Rect:
         return pygame.Rect(self.panel.x + 14, self.rows_top + i * (ROW_H + ROW_GAP), self.panel.w - 28, ROW_H)
 
-    def items(self) -> list:
-        return {"snacks": C.SNACKS, "home": C.DECOR, "care": C.CARE}.get(self.tab, [])
+    def items(self) -> Sequence[C.Snack | C.Decor | C.Care]:
+        tabs: dict[str, Sequence[C.Snack | C.Decor | C.Care]] = {"snacks": C.SNACKS, "home": C.DECOR, "care": C.CARE}
+        return tabs.get(self.tab, [])
 
     def click(self, pos, st: GameState) -> tuple | None:
         """Translate a click using current state, without requiring a draw.

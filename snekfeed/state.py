@@ -10,13 +10,12 @@ import contextlib
 import json
 import math
 import os
-import random
 import shutil
 import sys
 import tempfile
 import time
 from dataclasses import dataclass, field, fields
-from typing import Literal
+from typing import Literal, Protocol, cast
 
 from . import config as C
 
@@ -24,6 +23,12 @@ SNACKS_BY_KEY = {s.key: s for s in C.SNACKS}
 DECOR_BY_KEY = {d.key: d for d in C.DECOR}
 CARE_BY_KEY = {c.key: c for c in C.CARE}
 SAVE_VERSION = 1
+
+
+class _Rng(Protocol):
+    """The slice of `random.Random` the economy uses (the `random` module satisfies it too)."""
+
+    def random(self) -> float: ...
 
 
 class _UnsupportedSaveVersion(ValueError):
@@ -34,12 +39,12 @@ def _number(value: object, name: str) -> float:
     if type(value) not in (int, float):
         raise ValueError(f"{name} must be a number")
     try:
-        value = float(value)
+        number = float(cast("int | float", value))
     except OverflowError as error:
         raise ValueError(f"{name} is too large") from error
-    if not math.isfinite(value) or value < 0:
+    if not math.isfinite(number) or number < 0:
         raise ValueError(f"{name} must be finite and nonnegative")
-    return value
+    return number
 
 
 def _count(value: object, name: str, minimum: int = 0) -> int:
@@ -243,7 +248,7 @@ class GameState:
     def best_snack(self) -> str:
         return [s for s in C.SNACKS if self.snack_unlocked(s.key)][-1].key
 
-    def butterfly_reward(self, rng: random.Random) -> tuple[str, float]:
+    def butterfly_reward(self, rng: _Rng) -> tuple[str, float]:
         """Returns (kind, amount). kind is 'lucky', 'frenzy' or 'feast'."""
         roll = rng.random()
         if roll < 0.5 or self.base_rate() == 0:
@@ -422,15 +427,17 @@ def load(path: str) -> GameState | None:
         return None
 
 
+RecoveryProblem = Literal[
+    "invalid_save", "unsupported_version", "read_failed", "preserve_failed", "checkpoint_failed"
+]
+
+
 @dataclass(frozen=True)
 class Recovery:
     state: GameState
     away: float = 0.0
     earned: float = 0.0
-    problem: Literal[
-        "invalid_save", "unsupported_version", "read_failed",
-        "preserve_failed", "checkpoint_failed"
-    ] | None = None
+    problem: RecoveryProblem | None = None
     can_save: bool = True
     preserved_path: str | None = None
 
@@ -474,7 +481,7 @@ def recover(path: str, now: float | None = None) -> Recovery:
             return Recovery(GameState(saved_at=now), problem="preserve_failed", can_save=False)
         return Recovery(GameState(saved_at=now), problem="invalid_save", preserved_path=backup)
     away, earned = state.apply_offline(now)
-    problem = None if save(state, path, now) else "checkpoint_failed"
+    problem: RecoveryProblem | None = None if save(state, path, now) else "checkpoint_failed"
     return Recovery(state, away, earned, problem)
 
 

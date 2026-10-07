@@ -150,7 +150,7 @@ class Habitat:
 
     def random_drop_point(self, avoid: Vector2) -> Vector2:
         r = self.inner.inflate(-60, -80)
-        best = None
+        best = Vector2(r.center)
         for _ in range(10):
             p = Vector2(random.uniform(r.left, r.right), random.uniform(r.top + 30, r.bottom))
             if p.distance_to(avoid) > 140:

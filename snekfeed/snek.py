@@ -29,9 +29,12 @@ def body_radius(level: int) -> float:
 class Snek:
     def __init__(self, area: pygame.Rect, level: int) -> None:
         self.area = area
+        self.reset(level)
+
+    def reset(self, level: int) -> None:
         self.level = level
         self.radius = body_radius(level)
-        start = Vector2(area.centerx, area.centery + 40)
+        start = Vector2(self.area.centerx, self.area.centery + 40)
         self.heading = -0.3
         self.segments = [start - Vector2(math.cos(self.heading), math.sin(self.heading)) * i * self.spacing()
                          for i in range(target_length(level))]
@@ -62,9 +65,6 @@ class Snek:
     def set_level(self, level: int) -> None:
         self.level = level
         self.radius = body_radius(level)
-
-    def reset(self, level: int) -> None:
-        self.__init__(self.area, level)
 
     # ---- interaction ----------------------------------------------------------------
 
@@ -201,9 +201,9 @@ class Snek:
             if i >= n:
                 break
         for j in range(i, n):  # trail too short (fresh growth): chain behind
-            d = self.segments[j] - self.segments[j - 1]
-            if d.length() > gap:
-                self.segments[j] = self.segments[j - 1] + d * (gap / d.length())
+            delta = self.segments[j] - self.segments[j - 1]
+            if delta.length() > gap:
+                self.segments[j] = self.segments[j - 1] + delta * (gap / delta.length())
         while len(self.trail) > used + 40:
             self.trail.pop()
 

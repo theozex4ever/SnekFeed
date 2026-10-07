@@ -99,12 +99,14 @@ def decor(surf, key: str, center, s: float, t: float = 0.0, phase: float = 0.0) 
         D.ellipse(surf, (190, 180, 196), (x, y - s * 0.17), s * 0.5, s * 0.26)
         D.ellipse(surf, (214, 205, 218), (x - s * 0.03, y - s * 0.22), s * 0.44, s * 0.19)
         D.ellipse(surf, (236, 230, 238), (x - s * 0.2, y - s * 0.28), s * 0.13, s * 0.05)
-        for k, dx in enumerate((-0.14, 0.12)):
+        for idx, dx in enumerate((-0.14, 0.12)):
             ox = x + dx * s
-            wob = math.sin(t * 2.5 + phase + k) * s * 0.03
-            pts = [(ox + math.sin(j * 1.6 + t * 3 + k) * s * 0.04 + wob, y - s * 0.48 - j * s * 0.06) for j in range(5)]
-            for a, b in pairwise(pts):
-                D.line(surf, (255, 180, 150), a, b, 2)
+            wob = math.sin(t * 2.5 + phase + idx) * s * 0.03
+            pts = [
+                (ox + math.sin(j * 1.6 + t * 3 + idx) * s * 0.04 + wob, y - s * 0.48 - j * s * 0.06) for j in range(5)
+            ]
+            for p0, p1 in pairwise(pts):
+                D.line(surf, (255, 180, 150), p0, p1, 2)
     elif key == "mush":
         pulse = 0.5 + 0.5 * math.sin(t * 2.0 + phase)
         D.glow(surf, (255, 235, 170), (x, y - s * 0.45), s * 0.9, int(60 + 60 * pulse))
