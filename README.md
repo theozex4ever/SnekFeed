@@ -9,8 +9,8 @@
 A cozy incremental pet game about feeding **Snek**, a small pastel snake who loves snacks.
 Pet Snek for hearts, buy snacks, watch Snek grow longer, and fill the terrarium with cozy things.
 
-Everything is drawn in code and every sound is synthesized at startup. There are no image or audio assets;
-`assets/` only holds the app icon and Android splash.
+Everything is drawn in code and every sound, including the background music, is synthesized at startup.
+There are no image or audio assets; `assets/` only holds the app icon and Android splash.
 
 ## Run it
 
@@ -57,7 +57,7 @@ and takes a while. Later builds are quick. `buildozer.spec` uses a local pygame 
 | Pet Snek | Click or tap Snek, or hold the mouse button (or a finger) and stroke along Snek's body |
 | Feed Snek | Buy a snack in the **Snacks** tab and it drops into the terrarium |
 | Catch the golden butterfly | Click or tap it before it flutters away |
-| Mute | Speaker button, or `M` |
+| Mute sounds and music | Speaker button, or `M` |
 | Quit | `Esc`, the Android back button, or close the window (the game saves itself) |
 
 The game autosaves every 30 seconds and on exit. On Android it also saves when the app goes to the background,

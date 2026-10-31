@@ -321,6 +321,7 @@ class Game:
 
     def update(self, dt: float) -> None:
         self.t += dt
+        self.audio.update()
         st = self.st
         st.tick(dt)
 
