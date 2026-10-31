@@ -19,7 +19,7 @@ pip install -r requirements.txt
 python main.py        # or: python -m snekfeed
 ```
 
-Python 3.10+ and pygame 2.5+.
+Python 3.10+ and pygame 2.6.1+.
 
 ## How to play
 
@@ -107,7 +107,7 @@ Tool settings (ruff, mypy, pytest, coverage) all live in `pyproject.toml`.
 | --- | --- |
 | Lint, format and types | `ruff check`, `ruff format --check` and `mypy` |
 | Test | pytest with branch coverage on Linux for Python 3.10 to 3.13, plus Windows and macOS on 3.10 and 3.13 |
-| Test (oldest supported pygame) | the `pygame>=2.5` promise, by running the suite on pygame 2.5.0 |
+| Test (oldest supported pygame) | the `pygame>=2.6.1` promise, by running the suite on pygame 2.6.1 |
 | Boot the game | `Game().run()` starts, handles a quit event, saves and exits 0 |
 | Dependency audit | `pip-audit` against known vulnerabilities in what actually installs |
 | Lint workflows | `actionlint` over `.github/workflows` |
