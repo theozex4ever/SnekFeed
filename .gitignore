@@ -3,3 +3,9 @@ __pycache__/
 .pytest_cache/
 save.json
 *.tmp
+.coverage
+.coverage.*
+coverage.xml
+junit.xml
+.mypy_cache/
+.ruff_cache/

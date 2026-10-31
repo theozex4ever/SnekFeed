@@ -63,11 +63,13 @@ class Butterfly:
         self.t += dt
         self.life -= dt
         if random.random() < dt * 0.7:
-            self.wander = Vector2(random.uniform(self.area.left + 60, self.area.right - 60),
-                                  random.uniform(self.area.top + 60, self.area.bottom - 60))
+            self.wander = Vector2(
+                random.uniform(self.area.left + 60, self.area.right - 60),
+                random.uniform(self.area.top + 60, self.area.bottom - 60),
+            )
         if self.life < 2.5:  # fly away
             self.wander = Vector2(self.pos.x + (1 if self.vel.x >= 0 else -1) * 400, self.area.top - 80)
-        steer = (self.wander - self.pos)
+        steer = self.wander - self.pos
         if steer.length() > 1:
             steer.scale_to_length(90)
         self.vel += (steer - self.vel) * min(1.0, dt * 1.2)
@@ -150,7 +152,7 @@ class Habitat:
 
     def random_drop_point(self, avoid: Vector2) -> Vector2:
         r = self.inner.inflate(-60, -80)
-        best = None
+        best = Vector2(r.center)
         for _ in range(10):
             p = Vector2(random.uniform(r.left, r.right), random.uniform(r.top + 30, r.bottom))
             if p.distance_to(avoid) > 140:

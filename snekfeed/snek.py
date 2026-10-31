@@ -29,12 +29,17 @@ def body_radius(level: int) -> float:
 class Snek:
     def __init__(self, area: pygame.Rect, level: int) -> None:
         self.area = area
+        self.reset(level)
+
+    def reset(self, level: int) -> None:
         self.level = level
         self.radius = body_radius(level)
-        start = Vector2(area.centerx, area.centery + 40)
+        start = Vector2(self.area.centerx, self.area.centery + 40)
         self.heading = -0.3
-        self.segments = [start - Vector2(math.cos(self.heading), math.sin(self.heading)) * i * self.spacing()
-                         for i in range(target_length(level))]
+        self.segments = [
+            start - Vector2(math.cos(self.heading), math.sin(self.heading)) * i * self.spacing()
+            for i in range(target_length(level))
+        ]
         self.trail: deque[Vector2] = deque(Vector2(p) for p in self.segments)
         self.target = Vector2(start)
         self.state = "idle"  # idle | wander | seek | eat | sleep
@@ -63,15 +68,12 @@ class Snek:
         self.level = level
         self.radius = body_radius(level)
 
-    def reset(self, level: int) -> None:
-        self.__init__(self.area, level)
-
     # ---- interaction ----------------------------------------------------------------
 
     def hit(self, pos) -> bool:
         p = Vector2(pos)
         r = self.radius * 1.25
-        return any(p.distance_squared_to(s) < r * r for s in self.segments[::2] + [self.head])
+        return any(p.distance_squared_to(s) < r * r for s in [*self.segments[::2], self.head])
 
     def petted(self) -> None:
         self.happy_t = 0.9
@@ -83,8 +85,9 @@ class Snek:
 
     # ---- update -----------------------------------------------------------------------
 
-    def update(self, dt: float, foods: dict[int, Food], feeding: Feeding,
-               tummy_full: bool, mouse, butterfly_pos) -> None:
+    def update(
+        self, dt: float, foods: dict[int, Food], feeding: Feeding, tummy_full: bool, mouse, butterfly_pos
+    ) -> None:
         """Advance movement and request claims; observe feeding's meal clock."""
         self.t += dt
         self.happy_t = max(0.0, self.happy_t - dt)
@@ -112,8 +115,11 @@ class Snek:
             self._follow()
             return
 
-        live_foods = [(snack_id, foods[snack_id]) for snack_id, snack in snacks.items()
-                      if snack.phase == "waiting" and snack_id in foods]
+        live_foods = [
+            (snack_id, foods[snack_id])
+            for snack_id, snack in snacks.items()
+            if snack.phase == "waiting" and snack_id in foods
+        ]
         if live_foods and self.state != "eat":
             if self.state == "sleep" and tummy_full:
                 pass  # food coma: the snack waits until Snek wakes up
@@ -193,7 +199,8 @@ class Snek:
             used += 1
             d = prev.distance_to(p)
             while i < n and d > 0 and walked + d >= want:
-                self.segments[i] = prev.lerp(p, (want - walked) / d)
+                # Rounding can push the ratio a hair past 1, which Vector2.lerp rejects.
+                self.segments[i] = prev.lerp(p, min(1.0, (want - walked) / d))
                 i += 1
                 want += gap
             walked += d
@@ -201,9 +208,9 @@ class Snek:
             if i >= n:
                 break
         for j in range(i, n):  # trail too short (fresh growth): chain behind
-            d = self.segments[j] - self.segments[j - 1]
-            if d.length() > gap:
-                self.segments[j] = self.segments[j - 1] + d * (gap / d.length())
+            delta = self.segments[j] - self.segments[j - 1]
+            if delta.length() > gap:
+                self.segments[j] = self.segments[j - 1] + delta * (gap / delta.length())
         while len(self.trail) > used + 40:
             self.trail.pop()
 
@@ -250,7 +257,7 @@ class Snek:
         radii = []
         for i in range(n):
             u = i / max(1, n - 1)
-            r = R * (1.0 - 0.68 * u ** 2.2)
+            r = R * (1.0 - 0.68 * u**2.2)
             for b in self.bulges:
                 r *= 1.0 + 0.38 * math.exp(-((i - b) ** 2) / 3.0)
             radii.append(r)

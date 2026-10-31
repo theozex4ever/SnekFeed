@@ -95,8 +95,7 @@ class Game:
     def _save_progress(self, exiting: bool = False) -> bool:
         if not self.saving_allowed:
             if exiting:
-                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.",
-                      file=sys.stderr)
+                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.", file=sys.stderr)
             return False
         if S.save(self.st, self.save_path):
             return True
@@ -203,6 +202,8 @@ class Game:
 
     def catch_butterfly(self) -> None:
         bf = self.butterfly
+        if bf is None:
+            return
         self.butterfly = None
         kind, amount = self.st.butterfly_reward(random)
         self.fx.sparkles(bf.pos.x, bf.pos.y, 26, C.BUTTER, 80)

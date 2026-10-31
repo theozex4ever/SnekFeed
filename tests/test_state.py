@@ -107,6 +107,6 @@ def test_load_tolerates_garbage(tmp_path):
     assert S.load(str(path)) is None
 
 
-@pytest.mark.parametrize("n,s", [(0, "0"), (5.5, "5.5"), (999, "999"), (1234, "1.23K"), (45_600_000, "45.6M")])
+@pytest.mark.parametrize(("n", "s"), [(0, "0"), (5.5, "5.5"), (999, "999"), (1234, "1.23K"), (45_600_000, "45.6M")])
 def test_fmt(n, s):
     assert S.fmt(n) == s

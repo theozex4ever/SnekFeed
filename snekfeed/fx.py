@@ -10,7 +10,7 @@ from . import draw as D
 
 
 class Particle:
-    __slots__ = ("kind", "x", "y", "vx", "vy", "life", "max_life", "size", "color", "text", "phase")
+    __slots__ = ("color", "kind", "life", "max_life", "phase", "size", "text", "vx", "vy", "x", "y")
 
     def __init__(self, kind, x, y, vx, vy, life, size, color, text=""):
         self.kind, self.x, self.y, self.vx, self.vy = kind, x, y, vx, vy
@@ -25,21 +25,50 @@ class FX:
 
     def hearts(self, x, y, n=4, color=C.PINK) -> None:
         for _ in range(n):
-            self.items.append(Particle("heart", x + random.uniform(-12, 12), y + random.uniform(-6, 6),
-                                       random.uniform(-30, 30), random.uniform(-90, -50),
-                                       random.uniform(0.8, 1.3), random.uniform(10, 18), color))
+            self.items.append(
+                Particle(
+                    "heart",
+                    x + random.uniform(-12, 12),
+                    y + random.uniform(-6, 6),
+                    random.uniform(-30, 30),
+                    random.uniform(-90, -50),
+                    random.uniform(0.8, 1.3),
+                    random.uniform(10, 18),
+                    color,
+                )
+            )
 
     def sparkles(self, x, y, n=8, color=C.BUTTER, spread=40) -> None:
         for _ in range(n):
             a = random.uniform(0, math.tau)
             sp = random.uniform(20, spread * 2.5)
-            self.items.append(Particle("spark", x, y, math.cos(a) * sp, math.sin(a) * sp,
-                                       random.uniform(0.5, 1.0), random.uniform(4, 8), color))
+            self.items.append(
+                Particle(
+                    "spark",
+                    x,
+                    y,
+                    math.cos(a) * sp,
+                    math.sin(a) * sp,
+                    random.uniform(0.5, 1.0),
+                    random.uniform(4, 8),
+                    color,
+                )
+            )
 
     def crumbs(self, x, y, color, n=6) -> None:
         for _ in range(n):
-            self.items.append(Particle("crumb", x, y, random.uniform(-70, 70), random.uniform(-120, -40),
-                                       random.uniform(0.4, 0.7), random.uniform(2, 4), color))
+            self.items.append(
+                Particle(
+                    "crumb",
+                    x,
+                    y,
+                    random.uniform(-70, 70),
+                    random.uniform(-120, -40),
+                    random.uniform(0.4, 0.7),
+                    random.uniform(2, 4),
+                    color,
+                )
+            )
 
     def popup(self, x, y, s, color=C.PINK_DEEP, size=22) -> None:
         self.items.append(Particle("text", x, y, random.uniform(-8, 8), -55, 1.1, size, color, s))
@@ -68,8 +97,7 @@ class FX:
                 s = p.size * (0.6 + 0.4 * min(1.0, (1 - k) * 5))
                 D.heart(surf, D.mix(C.WHITE, p.color, min(1.0, k * 1.6)), (p.x, p.y), s)
             elif p.kind == "spark":
-                D.star(surf, D.mix(C.WHITE, p.color, k), (p.x, p.y), p.size * (0.4 + k), points=4,
-                       rot=p.life * 4)
+                D.star(surf, D.mix(C.WHITE, p.color, k), (p.x, p.y), p.size * (0.4 + k), points=4, rot=p.life * 4)
             elif p.kind == "crumb":
                 D.circle(surf, p.color, (p.x, p.y), p.size * k + 0.5)
             elif p.kind in ("text", "z"):

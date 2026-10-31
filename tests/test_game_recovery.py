@@ -10,8 +10,9 @@ def game_type(monkeypatch):
     monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
     monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
     monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-    from snekfeed.game import Game
     import pygame
+
+    from snekfeed.game import Game
 
     yield Game
     pygame.quit()
@@ -33,9 +34,7 @@ def test_startup_reports_credit_and_checkpoints_before_play(tmp_path, game_type)
     game.run()
 
 
-def test_protected_session_never_saves_on_shed_autosave_or_exit(
-    tmp_path, game_type, monkeypatch, capsys
-):
+def test_protected_session_never_saves_on_shed_autosave_or_exit(tmp_path, game_type, monkeypatch, capsys):
     path = tmp_path / "save.json"
     path.write_text(json.dumps({"version": 2, "hearts": 123}))
     original = path.read_bytes()
@@ -57,9 +56,7 @@ def test_protected_session_never_saves_on_shed_autosave_or_exit(
     assert "Saving disabled" in capsys.readouterr().err
 
 
-def test_autosave_failure_keeps_playing_and_exit_closes_pygame(
-    tmp_path, game_type, monkeypatch, capsys
-):
+def test_autosave_failure_keeps_playing_and_exit_closes_pygame(tmp_path, game_type, monkeypatch, capsys):
     import pygame
 
     path = tmp_path / "save.json"

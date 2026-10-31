@@ -2,6 +2,10 @@
 
 # Snek Feed
 
+[![CI](https://github.com/theozex4ever/SnekFeed/actions/workflows/ci.yml/badge.svg)](https://github.com/theozex4ever/SnekFeed/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/theozex4ever/SnekFeed/actions/workflows/codeql.yml/badge.svg)](https://github.com/theozex4ever/SnekFeed/actions/workflows/codeql.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab)
+
 A cozy incremental pet game about feeding **Snek**, a small pastel snake who loves snacks.
 Pet Snek for hearts, buy snacks, watch Snek grow longer, and fill the terrarium with cozy things.
 
@@ -71,15 +75,46 @@ snekfeed/
   fx.py       particles and popups
   audio.py    synthesized sound effects
   game.py     main loop that wires it all together
-tests/        economy tests (pytest)
+tests/        unit tests for the economy, plus headless end-to-end smoke tests (pytest)
 ```
 
 ## Development
 
 ```sh
-python -m pytest
+pip install -r requirements-dev.txt
 SNEKFEED_DEBUG=1 python main.py   # H: lots of hearts, L: level up, B: summon butterfly
 ```
+
+### Checks
+
+CI runs exactly these, so a green run locally means a green run on GitHub:
+
+```sh
+ruff check .                # lint
+ruff format --check .       # formatting (run `ruff format .` to fix)
+mypy                        # types
+pytest --cov                # tests, headless, with a coverage floor
+```
+
+Tests run headless: `tests/conftest.py` selects SDL's dummy video and audio drivers, so no window opens.
+`tests/test_smoke.py` boots the real `Game` and plays it through the UI, the run loop, shedding and saving.
+Tool settings (ruff, mypy, pytest, coverage) all live in `pyproject.toml`.
+
+### Continuous integration
+
+| Job | What it guards |
+| --- | --- |
+| Lint, format and types | `ruff check`, `ruff format --check` and `mypy` |
+| Test | pytest with branch coverage on Linux for Python 3.10 to 3.13, plus Windows and macOS on 3.10 and 3.13 |
+| Test (oldest supported pygame) | the `pygame>=2.5` promise, by running the suite on pygame 2.5.0 |
+| Boot the game | `Game().run()` starts, handles a quit event, saves and exits 0 |
+| Dependency audit | `pip-audit` against known vulnerabilities in what actually installs |
+| Lint workflows | `actionlint` over `.github/workflows` |
+| CodeQL, dependency review | static security analysis and risky-dependency checks on pull requests |
+| CI passed | one aggregate check to require in branch protection |
+
+Actions are pinned to commit SHAs and jobs run with read-only permissions.
+Dependabot keeps actions and dev tools current, and `.git-blame-ignore-revs` hides the formatting commit from `git blame`.
 
 ## Ideas for next increments
 
