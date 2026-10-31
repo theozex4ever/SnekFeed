@@ -4,6 +4,7 @@ so the game ships with zero image assets and scales to any icon size."""
 from __future__ import annotations
 
 import math
+from itertools import pairwise
 
 from . import draw as D
 
@@ -21,8 +22,13 @@ def snack(surf, key: str, center, s: float, bite: float = 0.0) -> None:
         for dx, dy in ((-0.2, 0.0), (0.18, -0.02), (0.0, 0.2), (-0.08, -0.12), (0.1, 0.12)):
             D.ellipse(surf, (255, 236, 170), (x + dx * s, y + dy * s + s * 0.08), s * 0.04, s * 0.05)
         for a in (-0.9, -0.3, 0.3, 0.9):
-            D.ellipse(surf, (120, 200, 140),
-                      (x + math.sin(a) * s * 0.2, y - s * 0.22 - math.cos(a) * s * 0.04), s * 0.12, s * 0.07)
+            D.ellipse(
+                surf,
+                (120, 200, 140),
+                (x + math.sin(a) * s * 0.2, y - s * 0.22 - math.cos(a) * s * 0.04),
+                s * 0.12,
+                s * 0.07,
+            )
         D.line(surf, (110, 170, 120), (x, y - s * 0.24), (x + s * 0.05, y - s * 0.38), max(1, int(s * 0.06)))
         D.ellipse(surf, (255, 190, 205), (x - s * 0.22, y - s * 0.04), s * 0.08, s * 0.05)
     elif key == "blue":
@@ -36,8 +42,14 @@ def snack(surf, key: str, center, s: float, bite: float = 0.0) -> None:
     elif key == "egg":
         D.ellipse(surf, (225, 205, 180), (x, y), s * 0.34, s * 0.43)
         D.ellipse(surf, (255, 244, 225), (x, y), s * 0.32, s * 0.41)
-        for dx, dy, r in ((-0.1, -0.15, 0.05), (0.12, -0.02, 0.06), (-0.05, 0.18, 0.04),
-                          (0.14, 0.2, 0.035), (-0.16, 0.06, 0.035), (0.02, -0.28, 0.03)):
+        for dx, dy, r in (
+            (-0.1, -0.15, 0.05),
+            (0.12, -0.02, 0.06),
+            (-0.05, 0.18, 0.04),
+            (0.14, 0.2, 0.035),
+            (-0.16, 0.06, 0.035),
+            (0.02, -0.28, 0.03),
+        ):
             D.circle(surf, (200, 165, 145), (x + dx * s, y + dy * s), s * r)
         D.ellipse(surf, (255, 255, 250), (x - s * 0.12, y - s * 0.2), s * 0.07, s * 0.1)
     elif key == "dump":
@@ -50,17 +62,42 @@ def snack(surf, key: str, center, s: float, bite: float = 0.0) -> None:
         D.polygon(surf, (250, 234, 210), pts)
         D.ellipse(surf, (250, 234, 210), (x, y + s * 0.2), s * 0.45, s * 0.1)
         for i in (-2, -1, 0, 1, 2):
-            D.line(surf, (225, 195, 165), (x + i * s * 0.09, y - s * 0.28 + abs(i) * s * 0.05),
-                   (x + i * s * 0.12, y - s * 0.12 + abs(i) * s * 0.05), max(1, int(s * 0.04)))
+            D.line(
+                surf,
+                (225, 195, 165),
+                (x + i * s * 0.09, y - s * 0.28 + abs(i) * s * 0.05),
+                (x + i * s * 0.12, y - s * 0.12 + abs(i) * s * 0.05),
+                max(1, int(s * 0.04)),
+            )
         D.ellipse(surf, (255, 248, 235), (x - s * 0.18, y - s * 0.02), s * 0.08, s * 0.05)
     elif key == "cake":
-        top = [(x - s * 0.42, y - s * 0.05), (x + s * 0.42, y - s * 0.22), (x + s * 0.42, y + s * 0.3),
-               (x - s * 0.42, y + s * 0.3)]
+        top = [
+            (x - s * 0.42, y - s * 0.05),
+            (x + s * 0.42, y - s * 0.22),
+            (x + s * 0.42, y + s * 0.3),
+            (x - s * 0.42, y + s * 0.3),
+        ]
         D.polygon(surf, (250, 215, 170), top)
-        D.polygon(surf, (255, 252, 245), [(x - s * 0.42, y + s * 0.08), (x + s * 0.42, y + s * 0.0),
-                                          (x + s * 0.42, y + s * 0.08), (x - s * 0.42, y + s * 0.15)])
-        D.polygon(surf, (255, 190, 210), [(x - s * 0.44, y - s * 0.1), (x + s * 0.44, y - s * 0.27),
-                                          (x + s * 0.44, y - s * 0.17), (x - s * 0.44, y + s * 0.0)])
+        D.polygon(
+            surf,
+            (255, 252, 245),
+            [
+                (x - s * 0.42, y + s * 0.08),
+                (x + s * 0.42, y + s * 0.0),
+                (x + s * 0.42, y + s * 0.08),
+                (x - s * 0.42, y + s * 0.15),
+            ],
+        )
+        D.polygon(
+            surf,
+            (255, 190, 210),
+            [
+                (x - s * 0.44, y - s * 0.1),
+                (x + s * 0.44, y - s * 0.27),
+                (x + s * 0.44, y - s * 0.17),
+                (x - s * 0.44, y + s * 0.0),
+            ],
+        )
         D.heart(surf, (255, 125, 150), (x + s * 0.05, y - s * 0.32), s * 0.32)
         D.ellipse(surf, (120, 200, 140), (x + s * 0.05, y - s * 0.42), s * 0.07, s * 0.04)
     elif key == "mochi":
@@ -90,26 +127,30 @@ def decor(surf, key: str, center, s: float, t: float = 0.0, phase: float = 0.0) 
         for i, a in enumerate((-1.0, -0.5, 0.0, 0.5, 1.0)):
             ang = -math.pi / 2 + a + sway
             length = s * (0.7 - abs(a) * 0.15)
-            _leaf(surf, (x, y), ang, length, s * 0.13,
-                  (125, 200, 150) if i % 2 else (150, 215, 170))
+            _leaf(surf, (x, y), ang, length, s * 0.13, (125, 200, 150) if i % 2 else (150, 215, 170))
     elif key == "rock":
         D.glow(surf, (255, 205, 150), (x, y - s * 0.2), s * 0.85, int(80 + 35 * math.sin(t * 1.3 + phase)))
         D.shadow(surf, (x, y + s * 0.04), s * 0.5, s * 0.13)
         D.ellipse(surf, (190, 180, 196), (x, y - s * 0.17), s * 0.5, s * 0.26)
         D.ellipse(surf, (214, 205, 218), (x - s * 0.03, y - s * 0.22), s * 0.44, s * 0.19)
         D.ellipse(surf, (236, 230, 238), (x - s * 0.2, y - s * 0.28), s * 0.13, s * 0.05)
-        for k, dx in enumerate((-0.14, 0.12)):
+        for idx, dx in enumerate((-0.14, 0.12)):
             ox = x + dx * s
-            wob = math.sin(t * 2.5 + phase + k) * s * 0.03
-            pts = [(ox + math.sin(j * 1.6 + t * 3 + k) * s * 0.04 + wob, y - s * 0.48 - j * s * 0.06) for j in range(5)]
-            for a, b in zip(pts, pts[1:]):
-                D.line(surf, (255, 180, 150), a, b, 2)
+            wob = math.sin(t * 2.5 + phase + idx) * s * 0.03
+            pts = [
+                (ox + math.sin(j * 1.6 + t * 3 + idx) * s * 0.04 + wob, y - s * 0.48 - j * s * 0.06) for j in range(5)
+            ]
+            for p0, p1 in pairwise(pts):
+                D.line(surf, (255, 180, 150), p0, p1, 2)
     elif key == "mush":
         pulse = 0.5 + 0.5 * math.sin(t * 2.0 + phase)
         D.glow(surf, (255, 235, 170), (x, y - s * 0.45), s * 0.9, int(60 + 60 * pulse))
         D.shadow(surf, (x, y), s * 0.25, s * 0.07)
-        D.polygon(surf, (250, 240, 225), [(x - s * 0.1, y), (x + s * 0.1, y), (x + s * 0.07, y - s * 0.45),
-                                          (x - s * 0.07, y - s * 0.45)])
+        D.polygon(
+            surf,
+            (250, 240, 225),
+            [(x - s * 0.1, y), (x + s * 0.1, y), (x + s * 0.07, y - s * 0.45), (x - s * 0.07, y - s * 0.45)],
+        )
         cap = [(x - s * 0.38, y - s * 0.42)]
         for i in range(13):
             a = math.pi + math.pi * i / 12
@@ -121,22 +162,45 @@ def decor(surf, key: str, center, s: float, t: float = 0.0, phase: float = 0.0) 
         D.ellipse(surf, (160, 200, 235), (x, y - s * 0.2), s * 0.62, s * 0.3)
         D.ellipse(surf, (190, 225, 250), (x, y - s * 0.2), s * 0.58, s * 0.26)
         k = (t * 0.5 + phase) % 1.0
-        D.ellipse(surf, D.mix((230, 245, 255), (190, 225, 250), k), (x + s * 0.12, y - s * 0.2),
-                  s * 0.1 + s * 0.25 * k, s * 0.04 + s * 0.1 * k)
+        D.ellipse(
+            surf,
+            D.mix((230, 245, 255), (190, 225, 250), k),
+            (x + s * 0.12, y - s * 0.2),
+            s * 0.1 + s * 0.25 * k,
+            s * 0.04 + s * 0.1 * k,
+        )
         D.circle(surf, (150, 210, 160), (x - s * 0.28, y - s * 0.18), s * 0.11)
-        D.polygon(surf, (190, 225, 250), [(x - s * 0.28, y - s * 0.18), (x - s * 0.15, y - s * 0.24),
-                                          (x - s * 0.17, y - s * 0.12)])
+        D.polygon(
+            surf,
+            (190, 225, 250),
+            [(x - s * 0.28, y - s * 0.18), (x - s * 0.15, y - s * 0.24), (x - s * 0.17, y - s * 0.12)],
+        )
         D.circle(surf, (255, 190, 210), (x - s * 0.3, y - s * 0.2), s * 0.04)
     elif key == "house":
         D.shadow(surf, (x, y + s * 0.02), s * 0.55, s * 0.12)
-        D.polygon(surf, (250, 240, 228), [(x - s * 0.4, y), (x + s * 0.4, y), (x + s * 0.4, y - s * 0.5),
-                                          (x - s * 0.4, y - s * 0.5)])
-        D.polygon(surf, (225, 205, 240), [(x + s * 0.18, y - s * 0.62), (x + s * 0.3, y - s * 0.62),
-                                          (x + s * 0.3, y - s * 0.85), (x + s * 0.18, y - s * 0.85)])
-        D.polygon(surf, (200, 175, 235), [(x - s * 0.52, y - s * 0.46), (x + s * 0.52, y - s * 0.46),
-                                          (x, y - s * 0.95)])
-        D.polygon(surf, (255, 200, 170), [(x - s * 0.1, y), (x + s * 0.1, y), (x + s * 0.1, y - s * 0.28),
-                                          (x - s * 0.1, y - s * 0.28)])
+        D.polygon(
+            surf,
+            (250, 240, 228),
+            [(x - s * 0.4, y), (x + s * 0.4, y), (x + s * 0.4, y - s * 0.5), (x - s * 0.4, y - s * 0.5)],
+        )
+        D.polygon(
+            surf,
+            (225, 205, 240),
+            [
+                (x + s * 0.18, y - s * 0.62),
+                (x + s * 0.3, y - s * 0.62),
+                (x + s * 0.3, y - s * 0.85),
+                (x + s * 0.18, y - s * 0.85),
+            ],
+        )
+        D.polygon(
+            surf, (200, 175, 235), [(x - s * 0.52, y - s * 0.46), (x + s * 0.52, y - s * 0.46), (x, y - s * 0.95)]
+        )
+        D.polygon(
+            surf,
+            (255, 200, 170),
+            [(x - s * 0.1, y), (x + s * 0.1, y), (x + s * 0.1, y - s * 0.28), (x - s * 0.1, y - s * 0.28)],
+        )
         D.circle(surf, (255, 200, 170), (x, y - s * 0.28), s * 0.1)
         D.circle(surf, (255, 240, 160), (x - s * 0.25, y - s * 0.3), s * 0.08)
         D.circle(surf, (255, 240, 160), (x + s * 0.25, y - s * 0.3), s * 0.08)

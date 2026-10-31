@@ -80,9 +80,8 @@ def test_claimed_snack_reserves_room_but_digestion_can_allow_a_purchase():
 
 
 @pytest.mark.parametrize(
-    "key, hearts, tummy, denial",
-    [("blue", 1000, 0, "locked"), ("berry", 5, 0, "insufficient_hearts"),
-     ("berry", 100, 100, "tummy_full")],
+    ("key", "hearts", "tummy", "denial"),
+    [("blue", 1000, 0, "locked"), ("berry", 5, 0, "insufficient_hearts"), ("berry", 100, 100, "tummy_full")],
 )
 def test_purchase_denial_agrees_with_eligibility_without_payment(key, hearts, tummy, denial):
     state = GameState(hearts=hearts, tummy=tummy)
@@ -159,7 +158,7 @@ def test_invalid_elapsed_time_is_rejected_before_landing_or_serving(dt):
     state = GameState(hearts=100, tummy=0)
     state.care["bowl"] = 1
     feeding = Feeding(state)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="elapsed time"):
         feeding.advance(dt)
     assert state.hearts == 100
     assert state.bowl_timer == 0
@@ -184,13 +183,22 @@ def test_rejected_shed_and_repeated_observations_preserve_the_claimed_meal():
 
 
 @pytest.mark.parametrize(
-    "hearts, level, tummy, timer, expected_key, expected_hearts",
-    [(150, 3, 0, 0, "blue", 75), (149, 3, 0, 0, "berry", 139),
-     (19, 3, 0, 0, None, 19), (1000, 3, 30, 0, None, 1000),
-     (1000, 3, 0, 1, None, 1000)],
+    ("hearts", "level", "tummy", "timer", "expected_key", "expected_hearts"),
+    [
+        (150, 3, 0, 0, "blue", 75),
+        (149, 3, 0, 0, "berry", 139),
+        (19, 3, 0, 0, None, 19),
+        (1000, 3, 30, 0, None, 1000),
+        (1000, 3, 0, 1, None, 1000),
+    ],
 )
 def test_auto_bowl_preserves_choice_half_budget_peckishness_and_cooldown(
-    hearts, level, tummy, timer, expected_key, expected_hearts,
+    hearts,
+    level,
+    tummy,
+    timer,
+    expected_key,
+    expected_hearts,
 ):
     state = GameState(hearts=hearts, level=level, tummy=tummy, bowl_timer=timer)
     state.care["bowl"] = 1

@@ -5,3 +5,9 @@ save.json
 *.tmp
 bin/
 .buildozer/
+.coverage
+.coverage.*
+coverage.xml
+junit.xml
+.mypy_cache/
+.ruff_cache/

@@ -11,9 +11,8 @@ import time
 import pygame
 from pygame.math import Vector2
 
-from . import art
+from . import art, device
 from . import config as C
-from . import device
 from . import draw as D
 from . import state as S
 from .audio import Audio
@@ -100,8 +99,7 @@ class Game:
     def _save_progress(self, exiting: bool = False) -> bool:
         if not self.saving_allowed:
             if exiting:
-                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.",
-                      file=sys.stderr)
+                print(f"Saving disabled to protect {self.save_path}; session progress wasn't saved.", file=sys.stderr)
             return False
         if S.save(self.st, self.save_path):
             return True
@@ -138,9 +136,11 @@ class Game:
 
     def _credit_background(self, now: float | None = None) -> tuple[float, float]:
         """End a suspension, crediting its interval. Returns (seconds_away, hearts_earned)."""
+        suspended_at, self.suspended_at = self.suspended_at, None
+        if suspended_at is None:
+            return 0.0, 0.0
         now = time.time() if now is None else now
-        away = max(0.0, now - self.suspended_at)
-        self.suspended_at = None
+        away = max(0.0, now - suspended_at)
         return away, self.st.credit_away(away)
 
     def _make_icon(self) -> pygame.Surface:
@@ -240,6 +240,8 @@ class Game:
 
     def catch_butterfly(self) -> None:
         bf = self.butterfly
+        if bf is None:
+            return
         self.butterfly = None
         kind, amount = self.st.butterfly_reward(random)
         self.fx.sparkles(bf.pos.x, bf.pos.y, 26, C.BUTTER, 80)

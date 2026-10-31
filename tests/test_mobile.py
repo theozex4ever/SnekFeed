@@ -200,7 +200,7 @@ def test_mute_button_takes_a_fingertip_near_miss():
     assert ui.click(ui.tab_rects["home"].center, st) == ("tab",), "Tabs stay reachable"
 
 
-@pytest.mark.parametrize("touch, verb", [(True, "Tap"), (False, "Click")])
+@pytest.mark.parametrize(("touch", "verb"), [(True, "Tap"), (False, "Click")])
 def test_prompts_use_the_device_press_verb(monkeypatch, touch, verb):
     from snekfeed import draw as D
 

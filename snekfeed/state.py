@@ -6,16 +6,16 @@ and balanced headlessly.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
-import random
 import shutil
 import sys
 import tempfile
 import time
 from dataclasses import dataclass, field, fields
-from typing import Literal
+from typing import Literal, Protocol, cast
 
 from . import config as C
 from . import device
@@ -26,6 +26,12 @@ CARE_BY_KEY = {c.key: c for c in C.CARE}
 SAVE_VERSION = 1
 
 
+class _Rng(Protocol):
+    """The slice of `random.Random` the economy uses (the `random` module satisfies it too)."""
+
+    def random(self) -> float: ...
+
+
 class _UnsupportedSaveVersion(ValueError):
     pass
 
@@ -34,12 +40,12 @@ def _number(value: object, name: str) -> float:
     if type(value) not in (int, float):
         raise ValueError(f"{name} must be a number")
     try:
-        value = float(value)
+        number = float(cast("int | float", value))
     except OverflowError as error:
         raise ValueError(f"{name} is too large") from error
-    if not math.isfinite(value) or value < 0:
+    if not math.isfinite(number) or number < 0:
         raise ValueError(f"{name} must be finite and nonnegative")
-    return value
+    return number
 
 
 def _count(value: object, name: str, minimum: int = 0) -> int:
@@ -145,11 +151,7 @@ class GameState:
 
     def can_buy_snack(self, key: str, pending_fill: float = 0.0) -> bool:
         snack = SNACKS_BY_KEY[key]
-        return (
-            self.snack_unlocked(key)
-            and self.hearts >= snack.cost
-            and self.has_room(pending_fill)
-        )
+        return self.snack_unlocked(key) and self.hearts >= snack.cost and self.has_room(pending_fill)
 
     def buy_snack(self, key: str, pending_fill: float = 0.0) -> bool:
         if not self.can_buy_snack(key, pending_fill):
@@ -243,7 +245,7 @@ class GameState:
     def best_snack(self) -> str:
         return [s for s in C.SNACKS if self.snack_unlocked(s.key)][-1].key
 
-    def butterfly_reward(self, rng: random.Random) -> tuple[str, float]:
+    def butterfly_reward(self, rng: _Rng) -> tuple[str, float]:
         """Returns (kind, amount). kind is 'lucky', 'frenzy' or 'feast'."""
         roll = rng.random()
         if roll < 0.5 or self.base_rate() == 0:
@@ -319,7 +321,7 @@ class GameState:
         return d
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GameState":
+    def from_dict(cls, data: dict) -> GameState:
         """Decode supported saves; invalid known fields reject the whole save."""
         if not isinstance(data, dict):
             raise ValueError("save must be an object")
@@ -365,9 +367,7 @@ class GameState:
             derived = [needed, state.pet_value(), state.passive_rate(), credit]
             derived += [state.decor_cost(key) for key in state.decor]
             derived += [state.care_cost(key) for key in state.care]
-            derived += [amount + credit for amount in (
-                state.hearts, state.run_hearts, state.lifetime_hearts
-            )]
+            derived += [amount + credit for amount in (state.hearts, state.run_hearts, state.lifetime_hearts)]
             if not all(math.isfinite(value) for value in derived):
                 raise ValueError("save calculations must remain finite")
         except OverflowError as error:
@@ -407,10 +407,8 @@ def save(state: GameState, path: str, now: float | None = None) -> bool:
         os.replace(tmp, path)
     except (OSError, ValueError, TypeError, OverflowError):
         if created_tmp:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp)
-            except OSError:
-                pass
         return False
     state.saved_at = timestamp
     return True
@@ -432,33 +430,31 @@ def load(path: str) -> GameState | None:
         return None
 
 
+RecoveryProblem = Literal["invalid_save", "unsupported_version", "read_failed", "preserve_failed", "checkpoint_failed"]
+
+
 @dataclass(frozen=True)
 class Recovery:
     state: GameState
     away: float = 0.0
     earned: float = 0.0
-    problem: Literal[
-        "invalid_save", "unsupported_version", "read_failed",
-        "preserve_failed", "checkpoint_failed"
-    ] | None = None
+    problem: RecoveryProblem | None = None
     can_save: bool = True
     preserved_path: str | None = None
 
 
 def _preserve_rejected_save(path: str) -> str:
     descriptor, backup = tempfile.mkstemp(
-        prefix=os.path.basename(path) + ".rejected-", suffix=".bak",
+        prefix=os.path.basename(path) + ".rejected-",
+        suffix=".bak",
         dir=os.path.dirname(path) or ".",
     )
     try:
-        with os.fdopen(descriptor, "wb") as target:
-            with open(path, "rb") as source:
-                shutil.copyfileobj(source, target)
+        with os.fdopen(descriptor, "wb") as target, open(path, "rb") as source:
+            shutil.copyfileobj(source, target)
     except OSError:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(backup)
-        except OSError:
-            pass
         raise
     return backup
 
@@ -487,7 +483,7 @@ def recover(path: str, now: float | None = None) -> Recovery:
             return Recovery(GameState(saved_at=now), problem="preserve_failed", can_save=False)
         return Recovery(GameState(saved_at=now), problem="invalid_save", preserved_path=backup)
     away, earned = state.apply_offline(now)
-    problem = None if save(state, path, now) else "checkpoint_failed"
+    problem: RecoveryProblem | None = None if save(state, path, now) else "checkpoint_failed"
     return Recovery(state, away, earned, problem)
 
 

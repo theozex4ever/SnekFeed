@@ -1,0 +1,43 @@
+# Tooling configuration only: Snek Feed runs from source (see requirements.txt), it is not a published package.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # so the bare `pytest` entry point can import snekfeed, as CI runs it
+addopts = "-ra --strict-markers --strict-config"
+xfail_strict = true
+
+[tool.coverage.run]
+source = ["snekfeed"]
+branch = true
+omit = ["snekfeed/__main__.py"]  # a two-line shim around game.main
+
+[tool.coverage.report]
+# Ratchet: raise this as coverage improves, never lower it.
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "PIE", "RUF", "PT"]
+ignore = [
+    "PT018",   # composite assertions read fine in these tests
+    "RUF001", "RUF002", "RUF003",  # intentional typographic characters in comments and strings
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["snekfeed"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["snekfeed"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = false
+no_implicit_optional = true
+check_untyped_defs = true

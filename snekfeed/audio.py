@@ -82,8 +82,11 @@ class Audio:
             "level": [self._make(_seq(*[_tone(note(n), note(n), 0.12, 0.2) for n in (72, 76, 79, 84)]))],
             "flutter": [self._make(_seq(*[_tone(note(n), note(n), 0.07, 0.14) for n in (88, 91, 96)]))],
             "deny": [self._make(_tone(240, 200, 0.12, 0.2))],
-            "shed": [self._make(_seq(*[_tone(note(n), note(n) * 1.01, 0.1, 0.18)
-                                       for n in (60, 64, 67, 71, 72, 76, 79, 84, 88)]))],
+            "shed": [
+                self._make(
+                    _seq(*[_tone(note(n), note(n) * 1.01, 0.1, 0.18) for n in (60, 64, 67, 71, 72, 76, 79, 84, 88)])
+                )
+            ],
         }
 
     def play(self, name: str) -> None:

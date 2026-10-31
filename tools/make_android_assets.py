@@ -9,7 +9,7 @@ from pathlib import Path
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-import pygame  # noqa: E402
+import pygame
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 CREAM = (0xFF, 0xF6, 0xEC)  # matches android.presplash_color

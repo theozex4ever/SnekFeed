@@ -24,8 +24,7 @@ def test_missing_save_starts_saveable_without_creating_file(tmp_path):
 @pytest.mark.parametrize("version", [None, 1])
 def test_missing_fields_and_timestamp_default_without_credit(tmp_path, version):
     path = tmp_path / "save.json"
-    data = {"decor": {"pebble": 3, "future_item": "ignored"}, "tick": 7,
-            "future_field": ["ignored"]}
+    data = {"decor": {"pebble": 3, "future_item": "ignored"}, "tick": 7, "future_field": ["ignored"]}
     if version is not None:
         data["version"] = version
     write_save(path, data)
@@ -41,22 +40,47 @@ def test_missing_fields_and_timestamp_default_without_credit(tmp_path, version):
     assert "tick" not in result.state.to_dict()
 
 
-@pytest.mark.parametrize("data", [
-    [], None, {"decor": []}, {"care": None}, {"hearts": "oops"},
-    {"hearts": True}, {"hearts": -1}, {"hearts": float("nan")},
-    {"xp": float("inf")}, {"saved_at": -1}, {"saved_at": "yesterday"},
-    {"level": 0}, {"level": 2.0}, {"sheds": True}, {"scales": -1},
-    {"pets": 1.5}, {"snacks_eaten": "3"}, {"tummy": 101}, {"mood": -1},
-    {"skin": []}, {"decor": {"pebble": 2.9}}, {"decor": {"fern": True}},
-    {"care": {"brush": 26}}, {"care": {"bowl": -1}}, {"bowl_timer": -1},
-    {"frenzy_left": "20"}, {"xp": S.xp_needed(1)}, {"level": 1510},
-    {"level": 1512}, {"decor": {"pebble": 10_000}},
-    {"scales": 10**300, "decor": {"house": 10**300}},
-    {"scales": 10**303, "decor": {"house": 100}},
-    {"hearts": 1.7e308, "scales": 10**301, "decor": {"house": 1}},
-    {"hearts": 10**1000},
-    {"version": True}, {"version": "1"},
-])
+@pytest.mark.parametrize(
+    "data",
+    [
+        [],
+        None,
+        {"decor": []},
+        {"care": None},
+        {"hearts": "oops"},
+        {"hearts": True},
+        {"hearts": -1},
+        {"hearts": float("nan")},
+        {"xp": float("inf")},
+        {"saved_at": -1},
+        {"saved_at": "yesterday"},
+        {"level": 0},
+        {"level": 2.0},
+        {"sheds": True},
+        {"scales": -1},
+        {"pets": 1.5},
+        {"snacks_eaten": "3"},
+        {"tummy": 101},
+        {"mood": -1},
+        {"skin": []},
+        {"decor": {"pebble": 2.9}},
+        {"decor": {"fern": True}},
+        {"care": {"brush": 26}},
+        {"care": {"bowl": -1}},
+        {"bowl_timer": -1},
+        {"frenzy_left": "20"},
+        {"xp": S.xp_needed(1)},
+        {"level": 1510},
+        {"level": 1512},
+        {"decor": {"pebble": 10_000}},
+        {"scales": 10**300, "decor": {"house": 10**300}},
+        {"scales": 10**303, "decor": {"house": 100}},
+        {"hearts": 1.7e308, "scales": 10**301, "decor": {"house": 1}},
+        {"hearts": 10**1000},
+        {"version": True},
+        {"version": "1"},
+    ],
+)
 def test_malformed_save_is_rejected_and_preserved_before_fresh_save(tmp_path, data):
     path = tmp_path / "save.json"
     write_save(path, data)
@@ -74,9 +98,15 @@ def test_malformed_save_is_rejected_and_preserved_before_fresh_save(tmp_path, da
     assert backup.read_bytes() == original
 
 
-@pytest.mark.parametrize("raw", [
-    b"not json", b"\xff", b'{"decor": ', b"[" * 2000 + b"]" * 2000,
-])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"not json",
+        b"\xff",
+        b'{"decor": ',
+        b"[" * 2000 + b"]" * 2000,
+    ],
+)
 def test_bad_encoding_and_json_preserve_original_bytes(tmp_path, raw):
     path = tmp_path / "save.json"
     path.write_bytes(raw)
@@ -132,8 +162,9 @@ def test_preservation_failure_protects_original(tmp_path, monkeypatch):
 
 def test_recovery_checkpoints_existing_offline_rules_once(tmp_path):
     path = tmp_path / "save.json"
-    state = S.GameState(hearts=100, run_hearts=100, lifetime_hearts=200,
-                        tummy=90, mood=70, frenzy_left=20, bowl_timer=12)
+    state = S.GameState(
+        hearts=100, run_hearts=100, lifetime_hearts=200, tummy=90, mood=70, frenzy_left=20, bowl_timer=12
+    )
     state.decor["pebble"] = 10
     expected = state.passive_rate(False) * C.OFFLINE_CAP_SECONDS * C.OFFLINE_EFFICIENCY
     assert S.save(state, path, now=0)
