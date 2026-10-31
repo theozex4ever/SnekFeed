@@ -6,12 +6,14 @@ import math
 import os
 import random
 import sys
+import time
 
 import pygame
 from pygame.math import Vector2
 
 from . import art
 from . import config as C
+from . import device
 from . import draw as D
 from . import state as S
 from .audio import Audio
@@ -23,15 +25,18 @@ from .ui import UI
 
 AUTOSAVE_EVERY = 30.0
 STROKE_DISTANCE = 45.0  # pixels of mouse travel over Snek per pet while holding
+WELCOME_MIN_AWAY = 60.0  # seconds away before the welcome-back card is worth showing
+BACK_KEYS = (pygame.K_ESCAPE, pygame.K_AC_BACK)  # Android's back button arrives as AC_BACK
 
 
 class Game:
     def __init__(self, save_path: str | None = None) -> None:
+        device.configure_sdl()
         pygame.mixer.pre_init(22050, -16, 1, 512)
         pygame.init()
         D.reset_caches()
         pygame.display.set_caption(C.TITLE)
-        self.screen = pygame.display.set_mode((C.WIDTH, C.HEIGHT))
+        self.screen = pygame.display.set_mode((C.WIDTH, C.HEIGHT), device.display_flags())
         self.clock = pygame.time.Clock()
         self.audio = Audio()
         self.save_path = save_path or S.default_save_path()
@@ -41,8 +46,7 @@ class Game:
         self.st = recovery.state
         self.saving_allowed = recovery.can_save
         self.ui = UI()
-        if recovery.away > 60 and recovery.earned >= 1:
-            self.ui.welcome = (recovery.away, recovery.earned)
+        self._welcome_back(recovery.away, recovery.earned)
         if recovery.problem:
             messages = {
                 "invalid_save": "Couldn't read your save. Kept a backup and started fresh.",
@@ -69,6 +73,7 @@ class Game:
         self.stroke_acc = 0.0
         self.last_mouse = None
         self.running = True
+        self.suspended_at: float | None = None  # wall clock when the app went to the background
         self.mini_snek = Snek(pygame.Rect(0, 0, 60, 60), 1)
         pygame.display.set_icon(self._make_icon())
 
@@ -105,6 +110,38 @@ class Game:
         else:
             self.ui.toasts.push("Couldn't save progress. Will try again at the next save.", C.PEACH)
         return False
+
+    def _welcome_back(self, away: float, earned: float) -> None:
+        """Show the welcome-back card, adding to one the player hasn't dismissed yet."""
+        if self.ui.welcome:
+            away, earned = away + self.ui.welcome[0], earned + self.ui.welcome[1]
+        if away > WELCOME_MIN_AWAY and earned >= 1:
+            self.ui.welcome = (away, earned)
+
+    def suspend(self, now: float | None = None) -> None:
+        """The app is going to the background, where it may be killed: save now."""
+        if self.suspended_at is not None:
+            return
+        self.suspended_at = time.time() if now is None else now
+        self.stroking = False
+        self.mouse = None
+        self._save_progress()
+
+    def resume(self, now: float | None = None) -> None:
+        """Credit the time spent in the background as offline time, then checkpoint it."""
+        if self.suspended_at is None:
+            return
+        self._welcome_back(*self._credit_background(now))
+        self.save_timer = AUTOSAVE_EVERY
+        self._save_progress()
+        self.clock.tick()  # don't count the pause as a frame
+
+    def _credit_background(self, now: float | None = None) -> tuple[float, float]:
+        """End a suspension, crediting its interval. Returns (seconds_away, hearts_earned)."""
+        now = time.time() if now is None else now
+        away = max(0.0, now - self.suspended_at)
+        self.suspended_at = None
+        return away, self.st.credit_away(away)
 
     def _make_icon(self) -> pygame.Surface:
         icon = pygame.Surface((64, 64), pygame.SRCALPHA)
@@ -220,11 +257,23 @@ class Game:
     # ---- loop --------------------------------------------------------------------------------
 
     def handle(self, event) -> None:
-        if event.type == pygame.QUIT:
+        if not self.running:
+            return  # Android can queue a foreground event behind its quit; leave exiting to run()
+        if event.type in (pygame.QUIT, pygame.APP_TERMINATING):
             self.running = False
+        elif event.type == pygame.RENDER_DEVICE_RESET:
+            # Android lost the GL context while backgrounded; set_mode rebuilds the scaled renderer.
+            self.screen = pygame.display.set_mode((C.WIDTH, C.HEIGHT), device.display_flags())
+        elif event.type in (pygame.APP_WILLENTERBACKGROUND, pygame.APP_DIDENTERBACKGROUND):
+            self.suspend()
+        elif event.type in (pygame.APP_WILLENTERFOREGROUND, pygame.APP_DIDENTERFOREGROUND):
+            self.resume()
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                self.running = False
+            if event.key in BACK_KEYS:
+                if self.ui.welcome:
+                    self.ui.welcome = None
+                else:
+                    self.running = False
             elif event.key == pygame.K_m:
                 self.audio.muted = not self.audio.muted
             elif self.debug and event.key == pygame.K_h:
@@ -235,9 +284,13 @@ class Game:
             elif self.debug and event.key == pygame.K_b:
                 self.butterfly = Butterfly(self.habitat.rect)
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self._is_touch(event):
+                self.mouse = event.pos
             self.mouse_down(event.pos)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.stroking = False
+            if self._is_touch(event):
+                self.mouse = None  # a lifted finger isn't hovering anywhere
         elif event.type == pygame.MOUSEMOTION:
             self.mouse = event.pos
             if self.stroking and self.snek.hit(event.pos) and self.last_mouse:
@@ -246,6 +299,10 @@ class Game:
                     self.stroke_acc = 0.0
                     self.pet(event.pos)
             self.last_mouse = event.pos
+
+    @staticmethod
+    def _is_touch(event) -> bool:
+        return device.TOUCH or getattr(event, "touch", False)
 
     def mouse_down(self, pos) -> None:
         action = self.ui.click(pos, self.st)
@@ -348,11 +405,19 @@ class Game:
                 dt = min(0.1, self.clock.tick(C.FPS) / 1000)
                 for event in pygame.event.get():
                     self.handle(event)
+                if not self.running:
+                    break
+                if self.suspended_at is not None:
+                    continue  # no drawing while Android has taken the screen away
                 self.update(dt)
                 self.draw()
                 pygame.display.flip()
         finally:
             try:
+                if self.suspended_at is not None:
+                    # Killed from the background: the exit save moves the save cursor to now,
+                    # so credit the background interval first or recovery would skip it.
+                    self._credit_background()
                 self._save_progress(exiting=True)
             finally:
                 pygame.quit()

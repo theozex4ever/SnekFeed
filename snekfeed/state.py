@@ -18,6 +18,7 @@ from dataclasses import dataclass, field, fields
 from typing import Literal
 
 from . import config as C
+from . import device
 
 SNACKS_BY_KEY = {s.key: s for s in C.SNACKS}
 DECOR_BY_KEY = {d.key: d for d in C.DECOR}
@@ -295,15 +296,20 @@ class GameState:
         """Credit time spent away. Returns (seconds_away, hearts_earned)."""
         now = time.time() if now is None else now
         away = max(0.0, now - self.saved_at)
-        credited = min(away, C.OFFLINE_CAP_SECONDS)
+        earned = self.credit_away(away)
+        self.saved_at = now
+        return away, earned
+
+    def credit_away(self, away: float) -> float:
+        """Credit an interval spent away without moving the save cursor. Returns hearts earned."""
+        credited = min(max(0.0, away), C.OFFLINE_CAP_SECONDS)
         earned = self.passive_rate(False) * credited * C.OFFLINE_EFFICIENCY
         self.earn(earned)
         self.tummy = max(0.0, self.tummy - self.digest_rate() * credited)
         # Snek misses you, but never drops below "a little lonely".
         self.mood = max(min(self.mood, 25.0), self.mood - self.mood_decay() * credited)
         self.frenzy_left = 0.0
-        self.saved_at = now
-        return away, earned
+        return earned
 
     # ---- persistence -----------------------------------------------------------------
 
@@ -372,6 +378,9 @@ class GameState:
 
 
 def default_save_path() -> str:
+    android = device.android_save_root()
+    if android:
+        return os.path.join(android, "snekfeed", "save.json")
     if sys.platform == "win32":
         root = os.environ.get("APPDATA", os.path.expanduser("~"))
     elif sys.platform == "darwin":

@@ -16,6 +16,7 @@ HUD_H = 92  # top bar over the habitat
 PANEL_W = 380  # shop panel on the right
 HABITAT = (16, HUD_H + 8, WIDTH - PANEL_W - 32, HEIGHT - HUD_H - 24)  # x, y, w, h
 PANEL = (WIDTH - PANEL_W - 8, 16, PANEL_W - 8, HEIGHT - 32)
+MIN_TOUCH_TEXT = 14  # phones scale the layout down, so fine print gets a floor
 
 # --- Pastel palette --------------------------------------------------------
 

@@ -8,6 +8,7 @@ import pygame
 import pygame.gfxdraw as gfx
 
 from . import config as C
+from . import device
 
 
 def _i(v: float) -> int:
@@ -159,10 +160,13 @@ _text_cache: dict = {}
 
 
 def font(size: int, bold: bool = False) -> pygame.font.Font:
+    if device.TOUCH:
+        size = max(size, C.MIN_TOUCH_TEXT)
     key = (size, bold)
     f = _fonts.get(key)
     if f is None:
-        for name in _FONT_CANDIDATES:
+        # Android has no fontconfig to search, so it uses pygame's bundled font.
+        for name in () if device.ANDROID else _FONT_CANDIDATES:
             path = pygame.font.match_font(name, bold=bold)
             if path:
                 f = pygame.font.Font(path, size)
