@@ -9,7 +9,8 @@
 A cozy incremental pet game about feeding **Snek**, a small pastel snake who loves snacks.
 Pet Snek for hearts, buy snacks, watch Snek grow longer, and fill the terrarium with cozy things.
 
-Everything is drawn in code and every sound is synthesized at startup. There are no image or audio assets.
+Everything is drawn in code and every sound, including the background music, is synthesized at startup.
+There are no image or audio assets.
 
 ## Run it
 
@@ -27,7 +28,7 @@ Python 3.10+ and pygame 2.5+.
 | Pet Snek | Click Snek, or hold the mouse button and stroke along Snek's body |
 | Feed Snek | Buy a snack in the **Snacks** tab and it drops into the terrarium |
 | Catch the golden butterfly | Click it before it flutters away |
-| Mute | Speaker button, or `M` |
+| Mute sounds and music | Speaker button, or `M` |
 | Quit | `Esc` or close the window (the game saves itself) |
 
 The game autosaves every 30 seconds and on exit. Saves go to `~/.local/share/snekfeed/save.json` on Linux,

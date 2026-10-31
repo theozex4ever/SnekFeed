@@ -130,3 +130,15 @@ def test_save_round_trips_through_a_new_game(make_game):
     pygame.quit()
     second = Game(str(make_game.path))
     assert second.st.hearts == pytest.approx(4321, rel=0.01)
+
+
+def test_background_music_starts_and_follows_mute(make_game):
+    game = make_game()
+    game.audio._render_music(pygame.mixer.get_init()[0], game.audio.channels)  # skip the wait for the background render
+    step(game, FRAME)
+    channel = game.audio._music
+    assert channel is not None and channel.get_busy()
+    game.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_m))
+    assert game.audio.muted
+    game.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_m))
+    assert not game.audio.muted and channel.get_busy()
