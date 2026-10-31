@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 import pygame
 
-from . import art
+from . import art, device
 from . import config as C
 from . import draw as D
 from .feeding import Feeding
@@ -67,6 +67,7 @@ class UI:
         self.panel = pygame.Rect(C.PANEL)
         self.hud = pygame.Rect(C.HABITAT[0], 16, C.HABITAT[2], C.HUD_H - 12)
         self.mute_rect = pygame.Rect(self.hud.right - 40, self.hud.y + 8, 30, 30)
+        self._mute_hit = self.mute_rect.inflate(24, 24)  # finger-sized; clear of the shop panel
         self.tab_rects = {}
         tw = (self.panel.w - 32) / len(TABS)
         for i, (key, _) in enumerate(TABS):
@@ -107,7 +108,7 @@ class UI:
         if self.welcome:
             self.welcome = None
             return ("noop",)
-        if self.mute_rect.collidepoint(pos):
+        if self._mute_hit.collidepoint(pos):
             return ("mute",)
         for key, rect in self.tab_rects.items():
             if rect.collidepoint(pos):
@@ -314,7 +315,11 @@ class UI:
         gain = st.shed_gain()
         if gain:
             col = C.PINK if self._shed_confirm > 0 else C.BUTTER
-            label = "Really? Click again to shed" if self._shed_confirm > 0 else f"Shed now for +{gain} scales"
+            label = (
+                f"Really? {device.press_verb()} again to shed"
+                if self._shed_confirm > 0
+                else f"Shed now for +{gain} scales"
+            )
         else:
             col, label = C.DISABLED, f"Grow Snek to Lv {C.SHED_MIN_LEVEL} first"
         hover = gain and self.hover is not None and self._shed_button.collidepoint(self.hover)
@@ -356,11 +361,22 @@ class UI:
             surf, f"Snek kept the home cozy for {span}.", (card.centerx, card.y + 86), 16, C.INK_SOFT, anchor="center"
         )
         heart_amount(surf, earned, (card.centerx, card.y + 130), 28, C.INK, True, "center")
-        D.text(surf, "click anywhere to continue", (card.centerx, card.bottom - 30), 13, C.INK_SOFT, anchor="center")
+        D.text(
+            surf,
+            f"{device.press_verb().lower()} anywhere to continue",
+            (card.centerx, card.bottom - 30),
+            13,
+            C.INK_SOFT,
+            anchor="center",
+        )
 
     def draw_hint(self, surf, st: GameState, area: pygame.Rect) -> None:
         if st.pets < 5:
-            msg = "Click Snek, or stroke Snek with the mouse held, to give pets"
+            msg = (
+                "Tap Snek, or stroke Snek with your finger, to give pets"
+                if device.TOUCH
+                else "Click Snek, or stroke Snek with the mouse held, to give pets"
+            )
         elif st.snacks_eaten == 0:
             msg = "Buy Snek a Strawberry in the Snacks tab"
         elif sum(st.decor.values()) == 0:

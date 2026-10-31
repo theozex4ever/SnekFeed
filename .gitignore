@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 save.json
 *.tmp
+bin/
+.buildozer/
 .coverage
 .coverage.*
 coverage.xml

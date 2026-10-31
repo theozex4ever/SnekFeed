@@ -5,7 +5,10 @@ The language of caring for Snek.
 ## Language
 
 **Time away**:
-The elapsed time since Snek's last saved progress, with no negative time when the clock moves backwards.
+The elapsed time since Snek's last saved progress, or on a phone since the game went to the background, with no negative time when the clock moves backwards.
+
+**Background**:
+On a phone, the game is in the background when another app or the home screen covers it. The game saves on entering the background, does not play while there, and grants offline credit for the time on return.
 
 **Offline credit**:
 The hearts earned while away, at half the home's income rate without frenzy, for at most eight hours. The welcome-back card reports this credit alongside the full time away.

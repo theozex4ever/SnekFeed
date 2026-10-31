@@ -10,7 +10,7 @@ A cozy incremental pet game about feeding **Snek**, a small pastel snake who lov
 Pet Snek for hearts, buy snacks, watch Snek grow longer, and fill the terrarium with cozy things.
 
 Everything is drawn in code and every sound, including the background music, is synthesized at startup.
-There are no image or audio assets.
+There are no image or audio assets; `assets/` only holds the app icon and Android splash.
 
 ## Run it
 
@@ -21,18 +21,50 @@ python main.py        # or: python -m snekfeed
 
 Python 3.10+ and pygame 2.6.1+.
 
+## Android
+
+Snek Feed runs fullscreen in landscape on Android phones and tablets. The easy way is the debug APK from the
+**Android** GitHub Actions workflow: run it by hand or push a `v*` tag, then download the `snekfeed-debug-apk` artifact
+and install it (allow installing unknown apps when asked).
+
+Android only accepts an update signed with the same key, and uninstalling deletes Snek's save, so the workflow
+won't build without one fixed key. Create a debug keystore once and store it as the `ANDROID_DEBUG_KEYSTORE_BASE64`
+repository secret:
+
+```sh
+keytool -genkeypair -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android \
+  -keyalg RSA -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+base64 < debug.keystore | tr -d '\n' | gh secret set ANDROID_DEBUG_KEYSTORE_BASE64
+```
+
+To build it yourself, use [Buildozer](https://buildozer.readthedocs.io/) on Linux, macOS or WSL. On Ubuntu:
+
+```sh
+sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake autopoint libtool libltdl-dev \
+  pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev gettext
+pip install buildozer==1.6.0 setuptools cython==0.29.34   # in a Python 3.10-3.12 venv
+buildozer android debug                      # APK lands in bin/
+buildozer android debug deploy run logcat    # install on a USB-debugging phone and follow the log
+```
+
+The first build downloads the Android SDK and NDK into `~/.buildozer`, asks you to accept the SDK licenses,
+and takes a while. Later builds are quick. `buildozer.spec` uses a local pygame 2.6.1 recipe from `tools/p4a-recipes`.
+
 ## How to play
 
 | Action | How |
 | --- | --- |
-| Pet Snek | Click Snek, or hold the mouse button and stroke along Snek's body |
+| Pet Snek | Click or tap Snek, or hold the mouse button (or a finger) and stroke along Snek's body |
 | Feed Snek | Buy a snack in the **Snacks** tab and it drops into the terrarium |
-| Catch the golden butterfly | Click it before it flutters away |
+| Catch the golden butterfly | Click or tap it before it flutters away |
 | Mute sounds and music | Speaker button, or `M` |
-| Quit | `Esc` or close the window (the game saves itself) |
+| Quit | `Esc`, the Android back button, or close the window (the game saves itself) |
 
-The game autosaves every 30 seconds and on exit. Saves go to `~/.local/share/snekfeed/save.json` on Linux,
-`%APPDATA%\snekfeed` on Windows, and `~/Library/Application Support/snekfeed` on macOS.
+The game autosaves every 30 seconds and on exit. On Android it also saves when the app goes to the background,
+and the home keeps earning while you're away (the same 50% for up to 8 hours as offline progress),
+so the welcome-back card greets you when you return.
+Saves go to `~/.local/share/snekfeed/save.json` on Linux, `%APPDATA%\snekfeed` on Windows,
+`~/Library/Application Support/snekfeed` on macOS, and the app's private storage on Android.
 Malformed saves are kept in a sibling `save.json.rejected-*.bak` before starting fresh.
 If a save cannot be read, has an unsupported version, or cannot be backed up,
 the game warns you and protects the existing file by disabling saving for that session.
@@ -75,8 +107,11 @@ snekfeed/
   art.py      procedural snack, decor and prop art
   fx.py       particles and popups
   audio.py    synthesized sound effects
+  device.py   platform detection and mobile display/input settings
   game.py     main loop that wires it all together
 tests/        unit tests for the economy, plus headless end-to-end smoke tests (pytest)
+tools/        Android icon and splash renderer, p4a pygame recipe
+buildozer.spec  Android build settings
 ```
 
 ## Development
@@ -84,6 +119,8 @@ tests/        unit tests for the economy, plus headless end-to-end smoke tests (
 ```sh
 pip install -r requirements-dev.txt
 SNEKFEED_DEBUG=1 python main.py   # H: lots of hearts, L: level up, B: summon butterfly
+SNEKFEED_TOUCH=1 python main.py   # preview the phone's touch wording and text sizes
+python tools/make_android_assets.py   # after editing assets/icon.svg
 ```
 
 ### Checks
