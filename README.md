@@ -21,6 +21,12 @@ python main.py        # or: python -m snekfeed
 
 Python 3.10+ and pygame 2.6.1+.
 
+## Play-test the desktop game on a phone
+
+The desktop game can be streamed to a phone browser over Tailscale without building an APK
+or porting the game. See [Phone play-testing](docs/playtesting.md) for the streaming
+approach, controls and limitations.
+
 ## Android
 
 Snek Feed runs fullscreen in landscape on Android phones and tablets. The easy way is the debug APK from the
